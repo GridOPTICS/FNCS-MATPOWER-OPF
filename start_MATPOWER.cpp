@@ -16,6 +16,7 @@ Written by Laurentiu Dan Marinovici, Pacific Northwest National Laboratory
 #include <iostream>
 #include <fstream>
 #include <cstdlib>
+#include <sstream>
 using namespace std;
 // #include <shellapi.h>
 #include "libopf.h"
@@ -193,8 +194,16 @@ int run_main(int argc, char **argv) {
       try {
          char file_name[] = {"case9.m"};
          char output_file_name[] = {"MATPOWER_output.csv"};
+         char gen_output_file_name[3][16]; // one file for each generator; there are 3 generators in this case; needs to be changed for general purpose, maybe using ngrows
+         ofstream gen_output_file;
          ofstream output_file(output_file_name, ios::out);
-         output_file << "Substation V amp (pu), Substation V ang (deg), LMP ($/MWh), LMP ($/MVAr), Gen V amp (pu), Gen V ang (deg), Ramp rate, Power lim, Pmin, Pmax" << endl;
+         output_file << "Time (seconds), Real Power Demand - PD (MW), Reactive Power Demand (MVAr), Substation V real (V), Substation V imag (V), LMP ($/MWh), LMP ($/MVAr)" << endl;
+
+         for (int i = 0; i < sizeof(gen_output_file_name)/sizeof(gen_output_file_name[0]); i++) {
+            snprintf(gen_output_file_name[i], sizeof(gen_output_file_name[i]), "Generator_%d.csv", i+1);
+            ofstream gen_output_file(gen_output_file_name[i], ios::out);
+            gen_output_file << "Time (seconds), PMAX (MW), PMIN (MW), Real power output - PG (MW), QMAX (MVAr), QMIN (MVAr), Reactive power output - QG (MVAr)" << endl;
+            }
          double baseMVA, nomfreq;
          // The powerflow solution is going to be calculated in the following variables
          mwArray mwBusOut, mwGenOut, mwBranchOut, f, success, info, et, g, jac, xr, pimul;
@@ -348,7 +357,6 @@ int run_main(int argc, char **argv) {
                prev_time = curr_time;
                cout << "\033[2J\033[1;1H"; // Just a trick to clear the screen before pritning the new results at the terminal
                cout << "It has been " << curr_hours << " hours, " << curr_minutes << " minutes, and " << curr_seconds << " seconds." << endl;
-
                // bus_valueReal = 10;
                // bus_valueIm = 20;
                // It is assumed that the load at the bus consists of the initial constant load plus a controllable load coming from distribution (GridLAB-D)
@@ -370,15 +378,18 @@ int run_main(int argc, char **argv) {
                cout << "Voltage REAL part -->> " << sendValReal << " V." << endl;
                cout << "Voltage IMAGINARY part -->> " << sendValIm << " V." << endl;
                cout << "=================================================================" << endl;
-               // output_file << sendValReal << ", " << sendValIm <<  ", ";
-               output_file << (double) mwBusOut.Get(2, modified_bus_ind, 8) << ", " << (double) mwBusOut.Get(2, modified_bus_ind, 9) << ", ";
+               // output_file << (double) mwBusOut.Get(2, modified_bus_ind, 8) << ", " << (double) mwBusOut.Get(2, modified_bus_ind, 9) << ", ";
                double realLMP = (double) mwBusOut.Get(2, modified_bus_ind, 14); // local marginal price based on the Lagrange multiplier on real power mismatch (column 14 of the output bus matrix
                double imagLMP = (double) mwBusOut.Get(2, modified_bus_ind, 15); // local marginal price based on the Lagrange multiplier on reactive power mismatch (column 14 of the output bus matrix
                cout << "================================== LMPs =====================================" << endl;
                cout << "LMP (Lagrange multiplier on real power mismatch) -->> " << realLMP << endl;
                cout << "LMP (Lagrange multiplier on reactive power mismatch) -->> " << imagLMP << endl;
                cout << "=================================================================" << endl;
-               output_file << realLMP << ", " << endl;
+               output_file << curr_time << "," << (double) mwBusOut.Get(2, modified_bus_ind, 3) << "," << (double) mwBusOut.Get(2, modified_bus_ind, 4) << ", " << sendValReal << ", " << sendValIm <<  ", " << realLMP << ", " << imagLMP << endl;
+               for (int gen_ind = 0; gen_ind < ngrows; gen_ind++){ // in C indexes start from 0, but from MATLAB variables index needs to start from 1
+                  ofstream gen_output_file(gen_output_file_name[gen_ind], ios::app);
+                  gen_output_file << curr_time << "," << (double) mwGenOut.Get(2, gen_ind + 1, 9) << "," << (double) mwGenOut.Get(2, gen_ind + 1, 10) << "," << (double) mwGenOut.Get(2, gen_ind + 1, 2) << "," << (double) mwGenOut.Get(2, gen_ind + 1, 4) << "," << (double) mwGenOut.Get(2, gen_ind + 1, 5) << "," << (double) mwGenOut.Get(2, gen_ind + 1, 3) << endl;
+               }
                // cout << "===== OPF number " << repeat << " ended. =====" << endl;
                sendvolt((int)bus_num,sendValReal,sendValIm);
             }
