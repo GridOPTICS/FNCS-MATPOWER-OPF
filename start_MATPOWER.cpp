@@ -21,9 +21,9 @@ using namespace std;
 // #include <shellapi.h>
 #include "libopf.h"
 #include "libmpoption.h"
-#include "/usr/local/matlab_2013a/extern/include/mclmcrrt.h"
-#include "/usr/local/matlab_2013a/extern/include/mclcppclass.h"
-#include "/usr/local/matlab_2013a/extern/include/matrix.h"
+#include "mclmcrrt.h"
+#include "mclcppclass.h"
+#include "matrix.h"
 
 # define PI 3.14159265
 
