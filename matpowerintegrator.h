@@ -7,6 +7,8 @@ extern TIME currentTime;
 
 void init(int busnumber);
 
+void initn(int *busnumbers,int size);
+
 TIME getCurrentTime();
 
 void startcalculation();

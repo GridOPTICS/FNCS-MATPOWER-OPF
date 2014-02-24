@@ -25,6 +25,23 @@ void init(int busnumber)
   finalizeRegistrations();
 }
 
+void initn(int *busnumbers,int size){
+
+  initIntegratorGracePeriod(SECONDS, 
+                                        2300000000, currentTime);
+  setregistercallback(getCurrentTime);
+
+  for(int i=0;i<size;i++){
+    char busname[10];
+    snprintf(busname,10,"%d",busnumbers[i]);
+    registerObject(busname);  
+      
+  }
+  
+  registerObject("psellobj");
+  finalizeRegistrations();
+}
+
 
 void startcalculation()
 {
