@@ -8,7 +8,7 @@ matpowerintegrator.o: matpowerintegrator.c
 
 
 start_MATPOWER: start_MATPOWER.o matpowerintegrator.o
-	g++-4.4 -O -g -pthread  -o start_MATPOWER  start_MATPOWER.o matpowerintegrator.o -Wl,-rpath-link,/usr/local/MATLAB/MATLAB_Compiler_Runtime/v81/bin/glnxa64 -L/usr/local/MATLAB/MATLAB_Compiler_Runtime/v81/runtime/glnxa64  -lmwmclmcrrt -lm  ./libmpoption.so ./libopf.so -lfncs_api -lzmq
+	g++-4.4 -O -g -pthread  -o start_MATPOWER  start_MATPOWER.o matpowerintegrator.o -Wl,-rpath-link,/usr/local/MATLAB/MATLAB_Compiler_Runtime/v81/bin/glnxa64 -L/usr/local/MATLAB/MATLAB_Compiler_Runtime/v81/runtime/glnxa64  -lmwmclmcrrt -lm  ./libmpoption.so ./libopf.so -lfncs -lzmq
 
 clean:
 	rm -f *~
