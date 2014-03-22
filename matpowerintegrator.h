@@ -1,25 +1,22 @@
 #include "cintegrator.h"
 
-#ifdef __cplusplus
-extern "C"{
-#endif
 extern TIME currentTime;
 
-void init(int busnumber);
+void init(int *busnumber);
 
-void initn(int *busnumbers,int size);
+void initn(int *busnumbers,int *size);
 
 TIME getCurrentTime();
 
 void startcalculation();
 
+void gettimef(int *timeVal);
+
 bool synchronize(bool inf);
 
-bool getpower(int busnumber,double *real,double *img);
+void getpower(int *busnumber,int *has,double *real,double *img);
 
-void sendvolt(int busnumber,double real, double img);
+void sendvolt(int *busnumber,char *toSubstation,double *real, double *img);
 
-void sendprice(double *price);
-#ifdef __cplusplus
-}
-#endif
+// void sendprice(double *price);
+void sendprice(double *price, char *toMarket);

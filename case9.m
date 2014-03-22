@@ -10,11 +10,32 @@ function mpc = case9
 %% MATPOWER Case Format : Version 2
 mpc.version = '2';
 
+%% ======================================================================
+%% FNCS communication interface
+%% This has been added to simplify the set-up process
+%% Busses where substations are
+mpc.SubBusFNCS = [
+       7       5      9];
+%% Substation names
+mpc.SubNameFNCS = [
+       SUBSTATIONCOM1   SUBSTATIONCOM2   SUBSTATIONCOM3 ];
+%% Market names corresponding to each substation
+mpc.MarketNameFNCS = [
+       MarkNIF1   MarkNIF2   MarkNIF3 ];
+%% ======================================================================
+%% For creating scenarios for visualization
+%% Setting up the matrix of generators that could become off-line
+%% Matrix contains the bus number of the corresponding off-line generators
+mpc.offlineGenBus = [
+       3 ];       
+%% ======================================================================
+
 %%-----  Power Flow Data  -----%%
 %% system MVA base
 mpc.baseMVA = 100;
 
 %% bus data
+mpc.busData = [ 9 13 ];
 %	bus_i	type	Pd	Qd	Gs	Bs	area	Vm	Va	baseKV	zone	Vmax	Vmin
 mpc.bus = [
 	1	3	0	0	0	0	1	1	0	345	1	1.1	0.9;
@@ -29,6 +50,7 @@ mpc.bus = [
 ];
 
 %% generator data
+mpc.genData = [ 3 21 ];
 %	bus	Pg	Qg	Qmax	Qmin	Vg	mBase	status	Pmax	Pmin	Pc1	Pc2	Qc1min	Qc1max	Qc2min	Qc2max	ramp_agc	ramp_10	ramp_30	ramp_q	apf
 mpc.gen = [
 	1	0	0	300	-300	1	100	1	250	10	0	0	0	0	0	0	0	0	0	0	0;
@@ -37,6 +59,7 @@ mpc.gen = [
 ];
 
 %% branch data
+mpc.branchData = [ 9 13 ];
 %	fbus	tbus	r	x	b	rateA	rateB	rateC	ratio	angle	status	angmin	angmax
 mpc.branch = [
 	1	4	0	0.0576	0	250	250	250	0	0	1	-360	360;
@@ -52,12 +75,14 @@ mpc.branch = [
 
 %%-----  OPF Data  -----%%
 %% area data
+mpc.areaData = [ 1 2 ];
 %	area	refbus
 mpc.areas = [
 	1	5;
 ];
 
 %% generator cost data
+mpc.costData = [ 3 7 ];
 %	1	startup	shutdown	n	x1	y1	...	xn	yn
 %	2	startup	shutdown	n	c(n-1)	...	c0
 mpc.gencost = [
