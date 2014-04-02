@@ -1,7 +1,7 @@
 clock {
      timezone EST+5EDT;
-     timestamp '2009-07-21 12:00:00';
-     stoptime '2009-07-21 15:59:59';
+     timestamp '2009-07-21 00:00:00';
+     stoptime '2009-07-22 23:59:59';
 }
 
 #set profiler=1;
@@ -64,11 +64,11 @@ class auction {
 }
 object auction {
     name Market2;
-    unit kW;
+    unit MW;
     period 300;
     price_cap 100;
-    transaction_log_file log_file_MATPOWER_test.csv;
-    curve_log_file bid_curve_MATPOWER_test.csv;
+    transaction_log_file log_file_MATPOWER_test_S3.csv;
+    curve_log_file bid_curve_MATPOWER_test_S3.csv;
     curve_log_info EXTRA;
     object market_network_interface {
          market_id_prop market_id;
@@ -91,7 +91,7 @@ object auction {
 	property current_price_mean_24h,current_price_stdev_24h,capacity_reference_bid_price, current_market.clearing_price, current_market.clearing_quantity;
         limit 100000000;
         interval 300;
-        file baseprice_clearedprice_clearedquantity_MATPOWER_test.csv;
+        file baseprice_clearedprice_clearedquantity_MATPOWER_test_S3.csv;
     };
     init_price 0.042676;
     init_stdev 0.000065;
@@ -166,7 +166,7 @@ object triplex_line_configuration {
 //	phases ABCN;
 //	object recorder{
 //		property positive_sequence_voltage,distribution_load;
-//		file substation_parameters.csv;
+//		file substation_parameters_MATPOWER_test_S3.csv;
 //		interval -1;
 //	};
 //object meter {
@@ -177,7 +177,7 @@ object triplex_line_configuration {
   //		property measured_real_power;
   //		limit 100000000;
   //		interval 300;
-  //		file totalload_MATPOWER_test.csv;
+  //		file totalload_MATPOWER_test_S3.csv;
 //};
 //        object transmissioncom{
 //		name SUBSTATIONCOM3;
@@ -199,17 +199,17 @@ object substation {
 		parent_voltage_property positive_sequence_voltage;
 		parent_power_property distribution_load;	
 	};
-	object meter {
-     		name ROOT;
-     		phases ABCN;
-     		nominal_voltage 345000;
+//	object meter {
+//     		name ROOT;
+//     		phases ABCN;
+//     		nominal_voltage 345000;
      		object recorder {
           		property measured_real_power;
           		limit 100000000;
           		interval 300;
-          		file totalload_MATPOWER_test.csv;
+          		file totalload_MATPOWER_test_S3.csv;
      		};
-	};
+//	};
 }
 
 
@@ -7524,41 +7524,41 @@ object multi_recorder {
 property F3_C_1:base_setpoint,F3_H_1:is_COOL_on,F3_H_1:air_temperature,F3_H_1:cooling_setpoint;
 limit 10000000;
 interval 300;
-file F3_house_data.csv;
+file F3_house_data_MATPOWER_test_S3.csv;
 }
 
 object multi_recorder {
      property F3_C_1:base_setpoint,F3_H_1:is_COOL_on,F3_H_1:air_temperature,F3_C_2:base_setpoint,F3_H_2:is_COOL_on,F3_H_2:air_temperature,F3_C_3:base_setpoint,F3_H_3:is_COOL_on,F3_H_3:air_temperature,F3_C_4:base_setpoint,F3_H_4:is_COOL_on,F3_H_4:air_temperature,F3_C_5:base_setpoint,F3_H_5:is_COOL_on,F3_H_5:air_temperature,F3_C_6:base_setpoint,F3_H_6:is_COOL_on,F3_H_6:air_temperature,F3_C_7:base_setpoint,F3_H_7:is_COOL_on,F3_H_7:air_temperature,F3_C_8:base_setpoint,F3_H_8:is_COOL_on,F3_H_8:air_temperature,F3_C_9:base_setpoint,F3_H_9:is_COOL_on,F3_H_9:air_temperature,F3_C_10:base_setpoint,F3_H_10:is_COOL_on,F3_H_10:air_temperature;
      limit 10000000;
      interval 300;
-     file F3_house_data_1_10_MATPOWER_test.csv;
+     file F3_house_data_1_10_MATPOWER_test_S3.csv;
 }
 
 object multi_recorder {
      property F3_C_11:base_setpoint,F3_H_11:is_COOL_on,F3_H_11:air_temperature,F3_C_12:base_setpoint,F3_H_12:is_COOL_on,F3_H_12:air_temperature,F3_C_13:base_setpoint,F3_H_13:is_COOL_on,F3_H_13:air_temperature,F3_C_14:base_setpoint,F3_H_14:is_COOL_on,F3_H_14:air_temperature,F3_C_15:base_setpoint,F3_H_15:is_COOL_on,F3_H_15:air_temperature,F3_C_16:base_setpoint,F3_H_16:is_COOL_on,F3_H_16:air_temperature,F3_C_17:base_setpoint,F3_H_17:is_COOL_on,F3_H_17:air_temperature,F3_C_18:base_setpoint,F3_H_18:is_COOL_on,F3_H_18:air_temperature,F3_C_19:base_setpoint,F3_H_19:is_COOL_on,F3_H_19:air_temperature,F3_C_20:base_setpoint,F3_H_20:is_COOL_on,F3_H_20:air_temperature;
      limit 10000000;
      interval 300;
-     file F3_house_data_11_20_MATPOWER_test.csv;
+     file F3_house_data_11_20_MATPOWER_test_S3.csv;
 }
 
 object multi_recorder {
      property F3_C_21:base_setpoint,F3_H_21:is_COOL_on,F3_H_21:air_temperature,F3_C_22:base_setpoint,F3_H_22:is_COOL_on,F3_H_22:air_temperature,F3_C_23:base_setpoint,F3_H_23:is_COOL_on,F3_H_23:air_temperature,F3_C_24:base_setpoint,F3_H_24:is_COOL_on,F3_H_24:air_temperature,F3_C_25:base_setpoint,F3_H_25:is_COOL_on,F3_H_25:air_temperature,F3_C_26:base_setpoint,F3_H_26:is_COOL_on,F3_H_26:air_temperature,F3_C_27:base_setpoint,F3_H_27:is_COOL_on,F3_H_27:air_temperature,F3_C_28:base_setpoint,F3_H_28:is_COOL_on,F3_H_28:air_temperature,F3_C_29:base_setpoint,F3_H_29:is_COOL_on,F3_H_29:air_temperature,F3_C_30:base_setpoint,F3_H_30:is_COOL_on,F3_H_30:air_temperature;
      limit 10000000;
      interval 300;
-     file F3_house_data_21_30_MATPOWER_test.csv;
+     file F3_house_data_21_30_MATPOWER_test_S3.csv;
 }
 
 object multi_recorder {
      property F3_C_31:base_setpoint,F3_H_31:is_COOL_on,F3_H_31:air_temperature,F3_C_32:base_setpoint,F3_H_32:is_COOL_on,F3_H_32:air_temperature,F3_C_33:base_setpoint,F3_H_33:is_COOL_on,F3_H_33:air_temperature,F3_C_34:base_setpoint,F3_H_34:is_COOL_on,F3_H_34:air_temperature,F3_C_35:base_setpoint,F3_H_35:is_COOL_on,F3_H_35:air_temperature,F3_C_36:base_setpoint,F3_H_36:is_COOL_on,F3_H_36:air_temperature,F3_C_37:base_setpoint,F3_H_37:is_COOL_on,F3_H_37:air_temperature,F3_C_38:base_setpoint,F3_H_38:is_COOL_on,F3_H_38:air_temperature,F3_C_39:base_setpoint,F3_H_39:is_COOL_on,F3_H_39:air_temperature,F3_C_40:base_setpoint,F3_H_40:is_COOL_on,F3_H_40:air_temperature;
      limit 10000000;
      interval 300;
-     file F3_house_data_31_40_MATPOWER_test.csv;
+     file F3_house_data_31_40_MATPOWER_test_S3.csv;
 }
 
 object multi_recorder {
      property F3_C_41:base_setpoint,F3_H_41:is_COOL_on,F3_H_41:air_temperature,F3_C_42:base_setpoint,F3_H_42:is_COOL_on,F3_H_42:air_temperature,F3_C_43:base_setpoint,F3_H_43:is_COOL_on,F3_H_43:air_temperature,F3_C_44:base_setpoint,F3_H_44:is_COOL_on,F3_H_44:air_temperature,F3_C_45:base_setpoint,F3_H_45:is_COOL_on,F3_H_45:air_temperature,F3_C_46:base_setpoint,F3_H_46:is_COOL_on,F3_H_46:air_temperature,F3_C_47:base_setpoint,F3_H_47:is_COOL_on,F3_H_47:air_temperature,F3_C_48:base_setpoint,F3_H_48:is_COOL_on,F3_H_48:air_temperature,F3_C_49:base_setpoint,F3_H_49:is_COOL_on,F3_H_49:air_temperature,F3_C_50:base_setpoint,F3_H_50:is_COOL_on,F3_H_50:air_temperature;
      limit 10000000;
      interval 300;
-     file F3_house_data_41_50_MATPOWER_test.csv;
+     file F3_house_data_41_50_MATPOWER_test_S3.csv;
 }
 
