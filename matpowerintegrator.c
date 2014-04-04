@@ -58,9 +58,9 @@ bool synchronize(bool inf)
 
  TIME nextTime;
 
- if(inf)
-	nextTime=getNextTime(currentTime,Infinity);
- else
+// if(inf)
+//	nextTime=getNextTime(currentTime,Infinity);
+// else
  	nextTime=getNextTime(currentTime,currentTime+1);
 
  

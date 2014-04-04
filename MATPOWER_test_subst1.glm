@@ -74,7 +74,7 @@ object auction {
          market_id_prop market_id;
          name MarkNIF1;
          average_price_prop current_price_mean_24h;
-         stdev_price_prop current_price_stdev_24h;
+        stdev_price_prop current_price_stdev_24h;
          adjust_price_prop adjust_price;
     };
     special_mode BUYERS_ONLY;
@@ -204,10 +204,11 @@ object substation {
 //     		phases ABCN;
 //     		nominal_voltage 345000;
      		object recorder {
-          		property measured_real_power;
+//          		property measured_real_power;
+          		property distribution_load.real;
           		limit 100000000;
           		interval 300;
-          		file totalload_MATPOWER_test_S1.csv;
+          		file substLoad_MATPOWER_test_S1.csv;
      		};
 //	};
 }
@@ -220,6 +221,13 @@ object transformer {
       from substation_root;
       to F1_transformer_meter;
       configuration substation_config;
+      object recorder {
+            property power_in.real;
+            limit 100000000;
+            interval 300;
+            file transLoad_MATPOWER_test_S1.csv;
+      };
+
 }
 
 object meter {

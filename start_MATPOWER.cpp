@@ -317,6 +317,7 @@ int run_main(int argc, char **argv) {
          int modified_bus_ind[nFNCSelem];
          int mesgc[nFNCSelem]; // synchronization only happens when at least one value is received
          bool mesg_rcv = false; // if at least one message is passed between simulators, set the message received flag to TRUE
+         bool mesg_snt = false; // MATPOWER is now active, it will send a message that topology changed if a generator is turned off, for example.
          // Generator bus matrix consisting of bus numbers corresponding to the generators that could become out-of service,
          // allowing us to set which generators get off-line, in order to simulate a reduction in generation capacity.
          // MATPOWER should reallocate different generation needs coming from the on-line generators to cover for the lost ones, since load stays constant
@@ -495,6 +496,7 @@ int run_main(int argc, char **argv) {
           do {
             // Start every time assuming no message it is received
             mesg_rcv = false;
+            mesg_snt = false;
             // ==========================================================================================================
             // Uncomment the line below when running with FNCS
             startcalculation();
@@ -508,14 +510,26 @@ int run_main(int argc, char **argv) {
             curr_seconds = curr_time - 3600*curr_hours - 60*curr_minutes;
             // Setting up the status of the generators, based on the current time
             // Turning some generators out-of-service between certain time preiods in the simulation 
-            if ((curr_hours >= 1 && curr_hours < 2) || (curr_hours >= 3 && curr_hours < 4)){
+            if ((curr_hours % 24 >= 1 && curr_hours % 24 < 2) || (curr_hours % 24 >= 3 && curr_hours % 24 < 4)){ // every day between 1 and 2 or 3 and 4
                for (int off_ind = 0; off_ind < sizeof(offline_gen_ind)/sizeof(offline_gen_ind[0]); off_ind++){
-                  mpc.Get("gen", 1, 1).Get(2, offline_gen_ind[off_ind], 8).Set((mwArray) 0);
+                  if ((double) mpc.Get("gen", 1, 1).Get(2, offline_gen_ind[off_ind], 8) == 1){ // if generator is ON
+                     mpc.Get("gen", 1, 1).Get(2, offline_gen_ind[off_ind], 8).Set((mwArray) 0); // turn generator OFF
+                     mesg_snt = mesg_snt | true; // signal that at least one generator changed its state
+                  }
+                  else {
+                     mesg_snt = mesg_snt | false;
+                  }
                }
             }
             else {
                for (int off_ind = 0; off_ind < sizeof(offline_gen_ind)/sizeof(offline_gen_ind[0]); off_ind++){
-                  mpc.Get("gen", 1, 1).Get(2, offline_gen_ind[off_ind], 8).Set((mwArray) 1);
+                  if ((double) mpc.Get("gen", 1, 1).Get(2, offline_gen_ind[off_ind], 8) == 0){ // if generator is OFF
+                     mpc.Get("gen", 1, 1).Get(2, offline_gen_ind[off_ind], 8).Set((mwArray) 1); // turn generator ON
+                     mesg_snt = mesg_snt | true; // signal that at least one generator changed its state
+                  }
+                  else{
+                     mesg_snt = mesg_snt | false;
+                  }
                }
             }
             for (int sub_ind = 0; sub_ind < sizeof(bus_num)/sizeof(bus_num[0]); sub_ind++) {
@@ -534,14 +548,16 @@ int run_main(int argc, char **argv) {
                   // These are constant values used to test the code when running without FNCS and GLD.
                   // Need to be commented when the code is used in FNCS, and uncommented when running off-line from FNCS
                   // cout << "WHAT IS REAL LOAD CHANGE FROM " << sub_name[sub_ind] << " ?" << endl;
-                  // cout << "Active power in MW:\t";
+                  // cout << "Active power in MW:\t";100
                   // cin >> bus_valueReal[sub_ind];
                   // cout << "WHAT IS IMAGINARY LOAD CHANGE FROM " << sub_name[sub_ind] << " ?" << endl;
                   // cout << "Reactive power in MVAr:\t";
                   // cin >> bus_valueIm[sub_ind];
                   // It is assumed that the load at the bus consists of the initial constant load plus a controllable load coming from distribution (GridLAB-D)
-                  mpc.Get("bus", 1, 1).Get(2, modified_bus_ind[sub_ind], 3).Set((mwArray) (static_pd[sub_ind] + bus_valueReal[sub_ind]));
-                  mpc.Get("bus", 1, 1).Get(2, modified_bus_ind[sub_ind], 4).Set((mwArray) (static_qd[sub_ind] + bus_valueIm[sub_ind]));
+                  // To simulate the idea of having a more substantial change in load at the substantion level, consider we have 100 similar models at on node
+                  // That is why I multiply by 100 below.
+                  mpc.Get("bus", 1, 1).Get(2, modified_bus_ind[sub_ind], 3).Set((mwArray) (static_pd[sub_ind] + 100*bus_valueReal[sub_ind]));
+                  mpc.Get("bus", 1, 1).Get(2, modified_bus_ind[sub_ind], 4).Set((mwArray) (static_qd[sub_ind] + 100*bus_valueIm[sub_ind]));
                } // end IF(mesgc)
             } // end FOR(sub_ind)
 
@@ -569,7 +585,10 @@ int run_main(int argc, char **argv) {
             // Call OPF with nargout = 11, and get a freaking ERROR.... AVOID IT!
             opfIn.Get(1, 1).Set(mpc); // Setting up the first input parameter for opf function as the actual MPC model
             opf(7, mwBusOut, mwGenOut, mwBranchOut, f, success, info, et, g, jac, xr, pimul, opfIn);
-            if (mesg_rcv) {
+            if (mesg_rcv | mesg_snt) {
+               if (mesg_snt) { // only cleaning the screen when MATPOWER initiates the message transfer; otherwise is cleaned when message is received
+                  cout << "\033[2J\033[1;1H"; // Just a trick to clear the screen before pritning the new results at the terminal
+               }
                for (int sub_ind = 0; sub_ind < sizeof(bus_num)/sizeof(bus_num[0]); sub_ind++) {
                   sendValReal[sub_ind] =  (double) mwBusOut.Get(2, modified_bus_ind[sub_ind], 8)*cos((double) mwBusOut.Get(2, modified_bus_ind[sub_ind], 9) * PI / 180)*(double) mwBusOut.Get(2, modified_bus_ind[sub_ind], 10)*1000; // real voltage at the bus based on the magnitude (column 8 of the output bus matrix) and angle in degrees (column 9 of the output bus matrix)
                   sendValIm[sub_ind] = (double) mwBusOut.Get(2, modified_bus_ind[sub_ind], 8)*sin((double) mwBusOut.Get(2, modified_bus_ind[sub_ind], 9) * PI / 180)*(double) mwBusOut.Get(2, modified_bus_ind[sub_ind], 10)*1000; // imaginary voltage at the bus based on the magnitude (column 8 of the output bus matrix) and angle in degrees (column 9 of the output bus matrix)
@@ -603,7 +622,7 @@ int run_main(int argc, char **argv) {
                   gen_output_file << curr_time << "," << (int) mwGenOut.Get(2, gen_ind + 1, 8) << "," << (double) mwGenOut.Get(2, gen_ind + 1, 9) << "," << (double) mwGenOut.Get(2, gen_ind + 1, 10) << "," << (double) mwGenOut.Get(2, gen_ind + 1, 2) << "," << (double) mwGenOut.Get(2, gen_ind + 1, 4) << "," << (double) mwGenOut.Get(2, gen_ind + 1, 5) << "," << (double) mwGenOut.Get(2, gen_ind + 1, 3) << endl;
                }
             }
-         }while(synchronize(!mesg_rcv));
+         }while(synchronize(!mesg_rcv | !mesg_snt));
           // use while(!mesg_rcv); when running off-line from FNCS
           // use while(synchronize(!mesg_rcv)); when involving FNCS
 

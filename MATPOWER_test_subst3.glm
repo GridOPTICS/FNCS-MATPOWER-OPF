@@ -203,12 +203,13 @@ object substation {
 //     		name ROOT;
 //     		phases ABCN;
 //     		nominal_voltage 345000;
-     		object recorder {
-          		property measured_real_power;
-          		limit 100000000;
-          		interval 300;
-          		file totalload_MATPOWER_test_S3.csv;
-     		};
+	object recorder {
+//  		property measured_real_power.real;
+  		property distribution_load;
+  		limit 100000000;
+  		interval 300;
+  		file substLoad_MATPOWER_test_S3.csv;
+	};
 //	};
 }
 
@@ -220,6 +221,13 @@ object transformer {
       from substation_root;
       to F3_transformer_meter;
       configuration substation_config;
+      object recorder {
+  	   property power_in.real;
+           limit 100000000;
+  	   interval 300;
+  	   file transLoad_MATPOWER_test_S3.csv;
+      };
+
 }
 
 object meter {
