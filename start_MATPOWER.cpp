@@ -4,12 +4,19 @@ Launching the MATPOWER Optimal Power Flow solver
   - Running the MATPOWER OPF requires that at least Matlab Compiler Runtime (downloaded for free from MATHWORKS webpage) is installed.
   - The code below reads the data file that resides in a .m file (the MATPOWER case file).
   - It creates the data structure needed by the OPF solver, calls the solver, and returns whatever it is desired.
-  - Files needed for deployment (for this case, at least, in order to be able to compile): start_MATPOWER.cpp, libopf.h, libopf.so, libmpoption.so, libmpoption.h, case9.m, matpowerintegrator.h, matpowerintegrator.c.
+  - Files needed for deployment (for this case, at least, in order to be able to compile): start_MATPOWER.cpp, libopf.h, libopf.so, libmpoption.so, libmpoption.h, case9.m, matpowerintegrator.h, matpowerintegrator.c, and the newly added, librunpf.so, librunpf.h, librunopf.so, librunopf.h.
 ==========================================================================================
 Copyright (C) 2013, Battelle Memorial Institute
 Written by Laurentiu Dan Marinovici, Pacific Northwest National Laboratory
-Last modified: 03/05/2014
-Reason for change: Implement possibility of running it with multiple instances of GridLAB-D
+Updated: 03/05/2014
+   Purpose: Implement possibility of running it with multiple instances of GridLAB-D.
+Updated: 03/21/2014
+   Purpose: Added the possibility to change the generation/trsnmission topology, by making on generator go off-line.
+            Branches could also be set-up to go off-line. (not implemented yet though).
+Last modified: 04/08/2014
+   Purpose: Ability to run both the regular power flow and the optimal power flow.
+            The optimal power flow is going to be solved 5 seconds before the end of every minute,
+            to be able to communicate the newly calculated price to GLD in time.
 ==========================================================================================
 */
 #include <stdio.h>
@@ -22,6 +29,8 @@ Reason for change: Implement possibility of running it with multiple instances o
 using namespace std;
 // #include <shellapi.h>
 #include "libopf.h"
+#include "librunpf.h"
+#include "librunopf.h"
 #include "libmpoption.h"
 #include "/usr/local/matlab_2013a/extern/include/mclmcrrt.h"
 #include "/usr/local/matlab_2013a/extern/include/mclcppclass.h"
@@ -253,7 +262,7 @@ int run_main(int argc, char **argv) {
       cerr << "Could not initialize the application properly !!!" << endl;
       return -1;
       }
-   if (!libopfInitialize() & !libmpoptionInitialize()) {
+   if (!libopfInitialize() || !libmpoptionInitialize() || !librunpfInitialize() || !librunopfInitialize()) {
       cerr << "Could not initialize one or more libraries properly !!!" << endl;
       return -1;
       }
@@ -263,7 +272,10 @@ int run_main(int argc, char **argv) {
          char file_name[] = {"case9.m"};
          double baseMVA, nomfreq;
          // The powerflow solution is going to be calculated in the following variables
-         mwArray mwBusOut, mwGenOut, mwBranchOut, f, success, info, et, g, jac, xr, pimul;
+         mwArray mwMVAbase, mwBusOut, mwGenOut, mwBranchOut, f, success, info, et, g, jac, xr, pimul, mwGenCost;
+         // Results from RUNPF or RUNOPF will be saved as in MATLAB in a mat file, and printed in a nice form in a file
+         mwArray printed_results(mwArray("printed_results.txt"));
+         mwArray saved_results(mwArray("saved_results.mat"));
 //         double mwBusOut_copy[9];
          int repeat = 1;
          // matrix dimensions based on test case; they need to be revised if other case is used
@@ -317,7 +329,9 @@ int run_main(int argc, char **argv) {
          int modified_bus_ind[nFNCSelem];
          int mesgc[nFNCSelem]; // synchronization only happens when at least one value is received
          bool mesg_rcv = false; // if at least one message is passed between simulators, set the message received flag to TRUE
-         bool mesg_snt = false; // MATPOWER is now active, it will send a message that topology changed if a generator is turned off, for example.
+         bool mesg_snt = false; // MATPOWER is now active, it will send a message that major changes happened at transmission level
+         bool solved_opf = false; // activates only when OPF is solved to be able to control when price is sent to GLD
+         bool topology_changed = false; // activates only if topology changed, like if a generator is turned off form on, or vice-versa, for example.
          // Generator bus matrix consisting of bus numbers corresponding to the generators that could become out-of service,
          // allowing us to set which generators get off-line, in order to simulate a reduction in generation capacity.
          // MATPOWER should reallocate different generation needs coming from the on-line generators to cover for the lost ones, since load stays constant
@@ -327,9 +341,15 @@ int run_main(int argc, char **argv) {
          int noffgrows = 1, noffgcolumns = 1, noffgelem = noffgrows*noffgcolumns;
          int offline_gen_bus[noffgelem], offline_gen_ind[noffgelem];
          // times recorded for visualization purposes
-         int curr_time; // current time in seconds
-         int curr_hours, curr_minutes, curr_seconds; // current time in hours, minutes, seconds
+         int curr_time = 0; // current time in seconds
+         int curr_hours = 0, curr_minutes = 0, curr_seconds = 0; // current time in hours, minutes, seconds
          int delta_t[nFNCSelem], prev_time[nFNCSelem]; // for each substation, we save the time between 2 consecutive received messages
+         for (int i = 0; i < nFNCSelem; i++) {
+            delta_t[i] = 0;
+            prev_time[i] = 0;
+            realLMP[i] = 0;
+            imagLMP[i] = 0;
+         }
          // output files for saving results
          char subst_output_file_name[nFNCSelem][17]; // one file for each substation
          char gen_output_file_name[ngrows][16]; // one file for each generator; there are ngrows generators in this case; needs to be changed for general purpose, maybe using ngrows
@@ -356,18 +376,26 @@ int run_main(int argc, char **argv) {
          mwArray mpoptNames(124, 18, mxCHAR_CLASS); // there are 124 option names and the maximum length is 18, but made it to 20
          cout << "=================================================" << endl;
          cout << "========= SETTING UP THE OPTIONS !!!!!===========" << endl;
+         cout << "Setting initial options" << endl;
          mpoption(2, mpopt, mpoptNames); // initialize powerflow options to DEFAULT ones
+         cout << "Finished setting the initial options" << endl;
          // cout << "mpopt = " << mpopt << endl;
          // cout << "mpoptNames = " << mpoptNames << endl;
-         mwArray optIn(1, 3, mxCELL_CLASS);
+         mwArray optIn(1, 3, mxCELL_CLASS); // this holds the initial option vector, the property name that will be set up, and the new value for that property
          optIn.Get(1, 1).Set(mpopt);
          optIn.Get(1, 2).Set(mwArray("PF_DC")); // name of the option that could be modified, e.g. PF_DC
          optIn.Get(1, 3).Set(mwArray(1)); // value of the modified option, e.g. 0 or 1 for false or true
+         mpoption(2, mpopt, mpoptNames, optIn); //, optionName, optionValue); // Setting up the DC Power Flow
+         optIn.Get(1, 1).Set(mpopt); // Update the option vector to the one with one property changed. Problem is, we have to do this avery time we change one option.
          optIn.Get(1, 2).Set(mwArray("VERBOSE"));
-         optIn.Get(1, 3).Set(mwArray(0));
+         optIn.Get(1, 3).Set(mwArray(0)); // Setting the VERBOSE mode OFF, so we do not see all the steps on the terminal
          mpoption(2, mpopt, mpoptNames, optIn); //, optionName, optionValue);
+         optIn.Get(1, 1).Set(mpopt); // Update the option vector to the one with one property changed. Problem is, we have to do this avery time we change one option.
+         optIn.Get(1, 2).Set(mwArray("OUT_ALL"));
+         optIn.Get(1, 3).Set(mwArray(0)); // Setting the OUT_APP mode OFF, so we do not see all the results printed at the terminal
+         mpoption(2, mpopt, mpoptNames, optIn); //, optionName, optionValue);
+         optIn.Get(1, 1).Set(mpopt); // Update the option vector to the one with one property changed. Problem is, we have to do this avery time we change one option.
          opfIn.Get(1, 2).Set(mpopt); // Setting up the second input argument of the opf function representing the power flow options
-         // cout << "mpopt = " << mpopt << endl;
 // ================================ END OF VARIABLE DECLARATION AND INITIALIZATION =============================================
 
          cout << "Just entered the MAIN function of the driver application." << endl;
@@ -424,7 +452,7 @@ int run_main(int argc, char **argv) {
          cout << endl;
          cout << "==================================" << endl;
 
-         cout << "==================================" << endl;
+         cout << "===========solvedcase=======================" << endl;
          cout << "mpc.SubNameFNCS = ";
          for (int sub_ind = 0; sub_ind < sizeof(bus_num)/sizeof(bus_num[0]); sub_ind++){
             cout << "\t" << sub_name[sub_ind];
@@ -494,9 +522,11 @@ int run_main(int argc, char **argv) {
           // ==========================================================================================================
          
           do {
-            // Start every time assuming no message it is received
+            // Start every time assuming no message is received or sent
             mesg_rcv = false;
             mesg_snt = false;
+            solved_opf = false;
+            topology_changed = false;
             // ==========================================================================================================
             // Uncomment the line below when running with FNCS
             startcalculation();
@@ -510,25 +540,25 @@ int run_main(int argc, char **argv) {
             curr_seconds = curr_time - 3600*curr_hours - 60*curr_minutes;
             // Setting up the status of the generators, based on the current time
             // Turning some generators out-of-service between certain time preiods in the simulation 
-            if ((curr_hours % 24 >= 1 && curr_hours % 24 < 2) || (curr_hours % 24 >= 3 && curr_hours % 24 < 4)){ // every day between 1 and 2 or 3 and 4
+            if ((curr_hours % 24 >= 3 && curr_hours % 24 < 4) || (curr_hours % 24 >= 6 && curr_hours % 24 < 7)){ // every day between 1 and 2 or 3 and 4
                for (int off_ind = 0; off_ind < sizeof(offline_gen_ind)/sizeof(offline_gen_ind[0]); off_ind++){
                   if ((double) mpc.Get("gen", 1, 1).Get(2, offline_gen_ind[off_ind], 8) == 1){ // if generator is ON
-                     mpc.Get("gen", 1, 1).Get(2, offline_gen_ind[off_ind], 8).Set((mwArray) 0); // turn generator OFF
-                     mesg_snt = mesg_snt | true; // signal that at least one generator changed its state
-                  }
-                  else {
-                     mesg_snt = mesg_snt | false;
+                     mpc.Get("gen", 1, 1).Get(2, offline_gen_ind[off_ind], 8).Set((mwArray) 0); // turn generator OFF, and set flag that topology has changed
+                     topology_changed = topology_changed || true; // signal that at least one generator changed its state
+//                     mesg_snt = mesg_snt || true; // signal that at least one generator changed its state
+                     cout << "============ Generator at bus " << mpc.Get("gen", 1, 1).Get(2, offline_gen_ind[off_ind], 1);
+                     cout << " is put OUT-OF-SERVICE. ==================" << endl;
                   }
                }
             }
             else {
                for (int off_ind = 0; off_ind < sizeof(offline_gen_ind)/sizeof(offline_gen_ind[0]); off_ind++){
                   if ((double) mpc.Get("gen", 1, 1).Get(2, offline_gen_ind[off_ind], 8) == 0){ // if generator is OFF
-                     mpc.Get("gen", 1, 1).Get(2, offline_gen_ind[off_ind], 8).Set((mwArray) 1); // turn generator ON
-                     mesg_snt = mesg_snt | true; // signal that at least one generator changed its state
-                  }
-                  else{
-                     mesg_snt = mesg_snt | false;
+                     mpc.Get("gen", 1, 1).Get(2, offline_gen_ind[off_ind], 8).Set((mwArray) 1); // turn generator ON, and set flag that topology changed
+                     topology_changed = topology_changed || true;// signal that at least one generator changed its state
+//                     mesg_snt = mesg_snt || true; // signal that at least one generator changed its state
+                     cout << "============ Generator at bus " << mpc.Get("gen", 1, 1).Get(2, offline_gen_ind[off_ind], 1);
+                     cout << " is brought back IN-SERVICE. ==================" << endl;
                   }
                }
             }
@@ -541,7 +571,7 @@ int run_main(int argc, char **argv) {
                // cout << "Simulate whether " << sub_name[sub_ind] << " received message or not. Enter 0 for NO, and 1 for YES." << endl;
                // cout << "YES [1] or NO [0]?\t";
                // cin >> mesgc[sub_ind];
-               mesg_rcv =  mesg_rcv || mesgc[sub_ind];
+               mesg_rcv =  mesg_rcv || (bool) mesgc[sub_ind];
                if (mesgc[sub_ind] == 1) {
                   delta_t[sub_ind] = curr_time - prev_time[sub_ind]; // number of seconds between 2 consecutive received messages
                   // If it is simulated that there's an incoming message, than we need to give a value.
@@ -564,14 +594,15 @@ int run_main(int argc, char **argv) {
             if (mesg_rcv){
                // ==========================================================================================================
                cout << "\033[2J\033[1;1H"; // Just a trick to clear the screen before pritning the new results at the terminal
+                     cout << "================== It has been " << curr_hours << " hours, " << curr_minutes << " minutes, and ";
+                     cout << curr_seconds << " seconds. ========================" << endl;
+               cout << "================== GLD initiating message after changes at the distribution level. ==================" << endl;
                for (int sub_ind = 0; sub_ind < sizeof(bus_num)/sizeof(bus_num[0]); sub_ind++) {
                   if (mesgc[sub_ind] == 1) {
-                     cout << "It has been " << curr_hours << " hours, " << curr_minutes << " minutes, and ";
-                     cout << curr_seconds << " seconds." << endl;
                      cout << "================== NEW LOAD AT " << sub_name[sub_ind] << " AT BUS " << bus_num[sub_ind] << " =====================" << endl;
                      cout << "ACTIVE power required at the bus: " << mpc.Get("bus", 1, 1).Get(2, modified_bus_ind[sub_ind], 3) << " MW." << endl;
                      cout << "REACTIVE power required at the bus: " << mpc.Get("bus", 1, 1).Get(2, modified_bus_ind[sub_ind], 4) << " MW." << endl;
-                     cout << "I've got the POWER after " << delta_t[sub_ind] << " seconds." << endl;
+                     cout << "I've got the NEW POWER after " << delta_t[sub_ind] << " seconds." << endl;
                      prev_time[sub_ind] = curr_time;
                   }
                   else {
@@ -580,14 +611,46 @@ int run_main(int argc, char **argv) {
                } // end FOR(sub_ind)
             } // end IF(mesg_rcv)
             
-            // Call OPF with nargout = 0 (first argument), and all results are going to be printed at the console
-            // Call OPF with nargout = 7, and get all the output parameters up to et
-            // Call OPF with nargout = 11, and get a freaking ERROR.... AVOID IT!
-            opfIn.Get(1, 1).Set(mpc); // Setting up the first input parameter for opf function as the actual MPC model
-            opf(7, mwBusOut, mwGenOut, mwBranchOut, f, success, info, et, g, jac, xr, pimul, opfIn);
-            if (mesg_rcv | mesg_snt) {
+            // Running the actual transmission simulator, by solving the power flow, or the optimal power flow
+            if (curr_time % 300 == 295 || topology_changed){
+               // Call OPF with nargout = 0 (first argument), and all results are going to be printed at the console
+               // Call OPF with nargout = 7, and get all the output parameters up to et
+               // Call OPF with nargout = 11, and get a freaking ERROR.... AVOID IT!
+               // cout << "================= Solving the OPTIMAL POWER FLOW. ==================" << endl;
+               opfIn.Get(1, 1).Set(mpc); // Setting up the first input parameter for opf function as the actual MPC model
+               // opf(7, mwBusOut, mwGenOut, mwBranchOut, f, success, info, et, g, jac, xr, pimul, opfIn);
+               runopf(7, mwMVAbase, mwBusOut, mwGenOut, mwGenCost, mwBranchOut, f, success, et, mpc, mpopt, printed_results, saved_results);
+               mpc.Get("gen", 1, 1).Set(mwGenOut);
+               mpc.Get("bus", 1, 1).Set(mwBusOut);
+               mpc.Get("branch", 1, 1).Set(mwBranchOut);
+               mpc.Get("gencost", 1, 1).Set(mwGenCost);
+               solved_opf = true;
+               mesg_snt = mesg_snt || true;
+            }            
+            else {
+               // cout << "================= Solving the POWER FLOW. ==================" << endl;
+               // opfIn.Get(1, 1).Set(mpc);
+               runpf(6, mwMVAbase, mwBusOut, mwGenOut, mwBranchOut, success, et, mpc, mpopt, printed_results, saved_results);
+               // Bring system in the new state by replacing the bus, generator, branch and generator cost matrices with the calculated ones
+               mpc.Get("gen", 1, 1).Set(mwGenOut);
+               mpc.Get("bus", 1, 1).Set(mwBusOut);
+               mpc.Get("branch", 1, 1).Set(mwBranchOut);
+               // runpf(6, mwMVAbase, mwBusOut, mwGenOut, mwBranchOut, success, et, opfIn.Get(1, 1), opfIn.Get(1, 2), printed_results, saved_results);
+            }
+
+            if (mesg_rcv || mesg_snt) {
                if (mesg_snt) { // only cleaning the screen when MATPOWER initiates the message transfer; otherwise is cleaned when message is received
                   cout << "\033[2J\033[1;1H"; // Just a trick to clear the screen before pritning the new results at the terminal
+                  if (curr_time % 300 == 295 && !topology_changed) {
+                     cout << "================== It has been " << curr_hours << " hours, " << curr_minutes << " minutes, and ";
+                     cout << curr_seconds << " seconds. ========================" << endl;
+                     cout << "================== MATPOWER initiating message after dispatching new generation profile. ==================" << endl;
+                  }
+                  else {
+                     cout << "================== It has been " << curr_hours << " hours, " << curr_minutes << " minutes, and ";
+                     cout << curr_seconds << " seconds. ========================" << endl;
+                     cout << "================== MATPOWER initiating message after topology has been changed. ==================" << endl;
+                  }
                }
                for (int sub_ind = 0; sub_ind < sizeof(bus_num)/sizeof(bus_num[0]); sub_ind++) {
                   sendValReal[sub_ind] =  (double) mwBusOut.Get(2, modified_bus_ind[sub_ind], 8)*cos((double) mwBusOut.Get(2, modified_bus_ind[sub_ind], 9) * PI / 180)*(double) mwBusOut.Get(2, modified_bus_ind[sub_ind], 10)*1000; // real voltage at the bus based on the magnitude (column 8 of the output bus matrix) and angle in degrees (column 9 of the output bus matrix)
@@ -603,14 +666,20 @@ int run_main(int argc, char **argv) {
                   // Uncomment the line below when running with FNCS
                   sendvolt(&bus_num[sub_ind], sub_name[sub_ind], &sendValReal[sub_ind], &sendValIm[sub_ind]);
                   // =========================================================================================================================
-                  realLMP[sub_ind] = (double) mwBusOut.Get(2, modified_bus_ind[sub_ind], 14); // local marginal price based on the Lagrange multiplier on real power mismatch (column 14 of the output bus matrix
-                  sendprice(&realLMP[sub_ind], market_name[sub_ind]);
-                  imagLMP[sub_ind] = (double) mwBusOut.Get(2, modified_bus_ind[sub_ind], 15); // local marginal price based on the Lagrange multiplier on reactive power mismatch (column 14 of the output bus matrix
-                  cout << "================== SENDING OUT THE LMP TO " << sub_name[sub_ind];
-                  cout << " AT BUS " << mpc.Get("bus", 1, 1).Get(2, modified_bus_ind[sub_ind], 1) << " =====================" << endl;
-                  cout << "LMP (Lagrange multiplier on real power mismatch) -->> " << realLMP[sub_ind] << endl;
-                  cout << "LMP (Lagrange multiplier on reactive power mismatch) -->> " << imagLMP[sub_ind] << endl;
-                  cout << "=================================================================" << endl;
+                  // Price will be sent only when an OPF has been solved
+                  if (solved_opf) {
+                     realLMP[sub_ind] = (double) mwBusOut.Get(2, modified_bus_ind[sub_ind], 14); // local marginal price based on the Lagrange multiplier on real power mismatch (column 14 of the output bus matrix
+                     // =========================================================================================================================
+                     // Uncomment the line below when running with FNCS
+                     sendprice(&realLMP[sub_ind], market_name[sub_ind]);
+                     // =========================================================================================================================
+                     imagLMP[sub_ind] = (double) mwBusOut.Get(2, modified_bus_ind[sub_ind], 15); // local marginal price based on the Lagrange multiplier on reactive power mismatch (column 14 of the output bus matrix
+                     cout << "================== SENDING OUT THE LMP TO " << sub_name[sub_ind];
+                     cout << " AT BUS " << mpc.Get("bus", 1, 1).Get(2, modified_bus_ind[sub_ind], 1) << " =====================" << endl;
+                     cout << "LMP (Lagrange multiplier on real power mismatch) -->> " << realLMP[sub_ind] << endl;
+                     cout << "LMP (Lagrange multiplier on reactive power mismatch) -->> " << imagLMP[sub_ind] << endl;
+                     cout << "=================================================================" << endl;
+                  }
                }
                // Saving the data of each time when at least one message had been exchanged to the corresponding CSV file
                for (int sub_ind = 0; sub_ind < nFNCSelem; sub_ind++){
@@ -622,9 +691,11 @@ int run_main(int argc, char **argv) {
                   gen_output_file << curr_time << "," << (int) mwGenOut.Get(2, gen_ind + 1, 8) << "," << (double) mwGenOut.Get(2, gen_ind + 1, 9) << "," << (double) mwGenOut.Get(2, gen_ind + 1, 10) << "," << (double) mwGenOut.Get(2, gen_ind + 1, 2) << "," << (double) mwGenOut.Get(2, gen_ind + 1, 4) << "," << (double) mwGenOut.Get(2, gen_ind + 1, 5) << "," << (double) mwGenOut.Get(2, gen_ind + 1, 3) << endl;
                }
             }
-         }while(synchronize(!mesg_rcv | !mesg_snt));
-          // use while(!mesg_rcv); when running off-line from FNCS
-          // use while(synchronize(!mesg_rcv)); when involving FNCS
+            // Line Below is from when running off-line, without FNCS
+            // curr_time = curr_time + 1;
+         }while(synchronize(!mesg_rcv || !mesg_snt));
+          // use while(!mesg_rcv || !mesg_snt); when running off-line from FNCS
+          // use while(synchronize(!mesg_rcv || !mesg_snt)); when involving FNCS
 
          cout << "Just executed the MATLAB function from the shared library." << endl;
          subst_output_file.close();
@@ -649,6 +720,7 @@ int run_main(int argc, char **argv) {
          }
       catch (const mwException& e) {
          cerr << e.what() << endl;
+         cout << "Caught an error!!!" << endl;
          return -2;
          }
       catch (...) {
@@ -656,6 +728,8 @@ int run_main(int argc, char **argv) {
          return -3;
          }
    libopfTerminate();
+   librunpfTerminate();
+   librunopfTerminate();
    libmpoptionTerminate();
    }
    mclTerminateApplication();

@@ -1,7 +1,7 @@
 clock {
      timezone EST+5EDT;
-     timestamp '2009-07-21 00:00:00';
-     stoptime '2009-07-22 23:59:59';
+     timestamp '2009-07-21 13:00:00';
+     stoptime '2009-07-21 20:59:59';
 }
 
 #set profiler=1;
@@ -59,22 +59,22 @@ object climate {
 class auction {
  	double day_ahead_average;
  	double day_ahead_std;
- 	double current_price_mean_24h;
-    double current_price_stdev_24h;
+ 	double current_price_mean_2h;
+    double current_price_stdev_2h;
 }
 object auction {
-    name Market2;
+    name Market3;
     unit MW;
     period 300;
     price_cap 100;
-    transaction_log_file log_file_MATPOWER_test_S3.csv;
-    curve_log_file bid_curve_MATPOWER_test_S3.csv;
-    curve_log_info EXTRA;
+//    transaction_log_file log_file_MATPOWER_test_S3.csv;
+//    curve_log_file bid_curve_MATPOWER_test_S3.csv;
+//    curve_log_info EXTRA;
     object market_network_interface {
          market_id_prop market_id;
          name MarkNIF3;
-         average_price_prop current_price_mean_24h;
-         stdev_price_prop current_price_stdev_24h;
+         average_price_prop current_price_mean_2h;
+         stdev_price_prop current_price_stdev_2h;
          adjust_price_prop adjust_price;
     };
     special_mode BUYERS_ONLY;
@@ -84,17 +84,19 @@ object auction {
 //    max_capacity_reference_bid_quantity 195;
 //    object player {
 //        property capacity_reference_bid_price;
+//        property fixed_price;
 //        file AEP_RT_LMP.player;
+//        file MATPOWER_LMP.player;
 //       loop 1;
 //    };
     object recorder {
-	property current_price_mean_24h,current_price_stdev_24h,capacity_reference_bid_price, current_market.clearing_price, current_market.clearing_quantity;
+	property current_price_mean_2h,current_price_stdev_2h,capacity_reference_bid_price,current_market.clearing_price,current_market.clearing_quantity,adjusted_price;
         limit 100000000;
-        interval 300;
+        interval 60;
         file baseprice_clearedprice_clearedquantity_MATPOWER_test_S3.csv;
     };
-    init_price 0.042676;
-    init_stdev 0.000065;
+    init_price 31.46; // 0.042676;
+    init_stdev 1; // 0.000065;
     use_future_mean_price FALSE;
     warmup 0;
 }
@@ -207,7 +209,7 @@ object substation {
 //  		property measured_real_power.real;
   		property distribution_load;
   		limit 100000000;
-  		interval 300;
+  		interval 60;
   		file substLoad_MATPOWER_test_S3.csv;
 	};
 //	};
@@ -340,7 +342,7 @@ object house {
           name F3_C_1;
           use_override ON;
           override override;
-          market Market2;
+          market Market3;
           schedule_skew -685;
           bid_mode PROXY;
           object controller_network_interface {
@@ -353,9 +355,9 @@ object house {
           setpoint cooling_setpoint;
           target air_temperature;
           deadband thermostat_deadband;
-          bid_deadband_ends true;
-          average_target current_price_mean_24h;
-          standard_deviation_target current_price_stdev_24h;
+          use_predictive_bidding true;
+          average_target current_price_mean_2h;
+          standard_deviation_target current_price_stdev_2h;
           period 300;
           demand last_cooling_load;
            range_high 4.000;
@@ -498,7 +500,7 @@ object house {
           name F3_C_2;
           use_override ON;
           override override;
-          market Market2;
+          market Market3;
           schedule_skew -505;
           bid_mode PROXY;
           object controller_network_interface {
@@ -511,9 +513,9 @@ object house {
           setpoint cooling_setpoint;
           target air_temperature;
           deadband thermostat_deadband;
-          bid_deadband_ends true;
-          average_target current_price_mean_24h;
-          standard_deviation_target current_price_stdev_24h;
+          use_predictive_bidding true;
+          average_target current_price_mean_2h;
+          standard_deviation_target current_price_stdev_2h;
           period 300;
           demand last_cooling_load;
            range_high 6.000;
@@ -590,7 +592,7 @@ object house {
           name F3_C_3;
           use_override ON;
           override override;
-          market Market2;
+          market Market3;
           schedule_skew 35;
           bid_mode PROXY;
           object controller_network_interface {
@@ -603,9 +605,9 @@ object house {
           setpoint cooling_setpoint;
           target air_temperature;
           deadband thermostat_deadband;
-          bid_deadband_ends true;
-          average_target current_price_mean_24h;
-          standard_deviation_target current_price_stdev_24h;
+          use_predictive_bidding true;
+          average_target current_price_mean_2h;
+          standard_deviation_target current_price_stdev_2h;
           period 300;
           demand last_cooling_load;
            range_high 6.000;
@@ -748,7 +750,7 @@ object house {
           name F3_C_4;
           use_override ON;
           override override;
-          market Market2;
+          market Market3;
           schedule_skew 260;
           bid_mode PROXY;
           object controller_network_interface {
@@ -761,9 +763,9 @@ object house {
           setpoint cooling_setpoint;
           target air_temperature;
           deadband thermostat_deadband;
-          bid_deadband_ends true;
-          average_target current_price_mean_24h;
-          standard_deviation_target current_price_stdev_24h;
+          use_predictive_bidding true;
+          average_target current_price_mean_2h;
+          standard_deviation_target current_price_stdev_2h;
           period 300;
           demand last_cooling_load;
            range_high 4.000;
@@ -906,7 +908,7 @@ object house {
           name F3_C_5;
           use_override ON;
           override override;
-          market Market2;
+          market Market3;
           schedule_skew 1264;
           bid_mode PROXY;
           object controller_network_interface {
@@ -919,9 +921,9 @@ object house {
           setpoint cooling_setpoint;
           target air_temperature;
           deadband thermostat_deadband;
-          bid_deadband_ends true;
-          average_target current_price_mean_24h;
-          standard_deviation_target current_price_stdev_24h;
+          use_predictive_bidding true;
+          average_target current_price_mean_2h;
+          standard_deviation_target current_price_stdev_2h;
           period 300;
           demand last_cooling_load;
            range_high 2.000;
@@ -1053,7 +1055,7 @@ object house {
           name F3_C_6;
           use_override ON;
           override override;
-          market Market2;
+          market Market3;
           schedule_skew -2499;
           bid_mode PROXY;
           object controller_network_interface {
@@ -1066,9 +1068,9 @@ object house {
           setpoint cooling_setpoint;
           target air_temperature;
           deadband thermostat_deadband;
-          bid_deadband_ends true;
-          average_target current_price_mean_24h;
-          standard_deviation_target current_price_stdev_24h;
+          use_predictive_bidding true;
+          average_target current_price_mean_2h;
+          standard_deviation_target current_price_stdev_2h;
           period 300;
           demand last_cooling_load;
            range_high 6.000;
@@ -1145,7 +1147,7 @@ object house {
           name F3_C_7;
           use_override ON;
           override override;
-          market Market2;
+          market Market3;
           schedule_skew 434;
           bid_mode PROXY;
           object controller_network_interface {
@@ -1158,9 +1160,9 @@ object house {
           setpoint cooling_setpoint;
           target air_temperature;
           deadband thermostat_deadband;
-          bid_deadband_ends true;
-          average_target current_price_mean_24h;
-          standard_deviation_target current_price_stdev_24h;
+          use_predictive_bidding true;
+          average_target current_price_mean_2h;
+          standard_deviation_target current_price_stdev_2h;
           period 300;
           demand last_cooling_load;
            range_high 8.000;
@@ -1303,7 +1305,7 @@ object house {
           name F3_C_8;
           use_override ON;
           override override;
-          market Market2;
+          market Market3;
           schedule_skew 733;
           bid_mode PROXY;
           object controller_network_interface {
@@ -1316,9 +1318,9 @@ object house {
           setpoint cooling_setpoint;
           target air_temperature;
           deadband thermostat_deadband;
-          bid_deadband_ends true;
-          average_target current_price_mean_24h;
-          standard_deviation_target current_price_stdev_24h;
+          use_predictive_bidding true;
+          average_target current_price_mean_2h;
+          standard_deviation_target current_price_stdev_2h;
           period 300;
           demand last_cooling_load;
            range_high 8.000;
@@ -1461,7 +1463,7 @@ object house {
           name F3_C_9;
           use_override ON;
           override override;
-          market Market2;
+          market Market3;
           schedule_skew 1301;
           bid_mode PROXY;
           object controller_network_interface {
@@ -1474,9 +1476,9 @@ object house {
           setpoint cooling_setpoint;
           target air_temperature;
           deadband thermostat_deadband;
-          bid_deadband_ends true;
-          average_target current_price_mean_24h;
-          standard_deviation_target current_price_stdev_24h;
+          use_predictive_bidding true;
+          average_target current_price_mean_2h;
+          standard_deviation_target current_price_stdev_2h;
           period 300;
           demand last_cooling_load;
            range_high 6.000;
@@ -1553,7 +1555,7 @@ object house {
           name F3_C_10;
           use_override ON;
           override override;
-          market Market2;
+          market Market3;
           schedule_skew -1933;
           bid_mode PROXY;
           object controller_network_interface {
@@ -1566,9 +1568,9 @@ object house {
           setpoint cooling_setpoint;
           target air_temperature;
           deadband thermostat_deadband;
-          bid_deadband_ends true;
-          average_target current_price_mean_24h;
-          standard_deviation_target current_price_stdev_24h;
+          use_predictive_bidding true;
+          average_target current_price_mean_2h;
+          standard_deviation_target current_price_stdev_2h;
           period 300;
           demand last_cooling_load;
            range_high 0.000;
@@ -1645,7 +1647,7 @@ object house {
           name F3_C_11;
           use_override ON;
           override override;
-          market Market2;
+          market Market3;
           schedule_skew -748;
           bid_mode PROXY;
           object controller_network_interface {
@@ -1658,9 +1660,9 @@ object house {
           setpoint cooling_setpoint;
           target air_temperature;
           deadband thermostat_deadband;
-          bid_deadband_ends true;
-          average_target current_price_mean_24h;
-          standard_deviation_target current_price_stdev_24h;
+          use_predictive_bidding true;
+          average_target current_price_mean_2h;
+          standard_deviation_target current_price_stdev_2h;
           period 300;
           demand last_cooling_load;
            range_high 0.000;
@@ -1803,7 +1805,7 @@ object house {
           name F3_C_12;
           use_override ON;
           override override;
-          market Market2;
+          market Market3;
           schedule_skew -569;
           bid_mode PROXY;
           object controller_network_interface {
@@ -1816,9 +1818,9 @@ object house {
           setpoint cooling_setpoint;
           target air_temperature;
           deadband thermostat_deadband;
-          bid_deadband_ends true;
-          average_target current_price_mean_24h;
-          standard_deviation_target current_price_stdev_24h;
+          use_predictive_bidding true;
+          average_target current_price_mean_2h;
+          standard_deviation_target current_price_stdev_2h;
           period 300;
           demand last_cooling_load;
            range_high 2.000;
@@ -1961,7 +1963,7 @@ object house {
           name F3_C_13;
           use_override ON;
           override override;
-          market Market2;
+          market Market3;
           schedule_skew 2422;
           bid_mode PROXY;
           object controller_network_interface {
@@ -1974,9 +1976,9 @@ object house {
           setpoint cooling_setpoint;
           target air_temperature;
           deadband thermostat_deadband;
-          bid_deadband_ends true;
-          average_target current_price_mean_24h;
-          standard_deviation_target current_price_stdev_24h;
+          use_predictive_bidding true;
+          average_target current_price_mean_2h;
+          standard_deviation_target current_price_stdev_2h;
           period 300;
           demand last_cooling_load;
            range_high 6.000;
@@ -2108,7 +2110,7 @@ object house {
           name F3_C_14;
           use_override ON;
           override override;
-          market Market2;
+          market Market3;
           schedule_skew -1557;
           bid_mode PROXY;
           object controller_network_interface {
@@ -2121,9 +2123,9 @@ object house {
           setpoint cooling_setpoint;
           target air_temperature;
           deadband thermostat_deadband;
-          bid_deadband_ends true;
-          average_target current_price_mean_24h;
-          standard_deviation_target current_price_stdev_24h;
+          use_predictive_bidding true;
+          average_target current_price_mean_2h;
+          standard_deviation_target current_price_stdev_2h;
           period 300;
           demand last_cooling_load;
            range_high 4.000;
@@ -2266,7 +2268,7 @@ object house {
           name F3_C_15;
           use_override ON;
           override override;
-          market Market2;
+          market Market3;
           schedule_skew 2179;
           bid_mode PROXY;
           object controller_network_interface {
@@ -2279,9 +2281,9 @@ object house {
           setpoint cooling_setpoint;
           target air_temperature;
           deadband thermostat_deadband;
-          bid_deadband_ends true;
-          average_target current_price_mean_24h;
-          standard_deviation_target current_price_stdev_24h;
+          use_predictive_bidding true;
+          average_target current_price_mean_2h;
+          standard_deviation_target current_price_stdev_2h;
           period 300;
           demand last_cooling_load;
            range_high 0.000;
@@ -2424,7 +2426,7 @@ object house {
           name F3_C_16;
           use_override ON;
           override override;
-          market Market2;
+          market Market3;
           schedule_skew -576;
           bid_mode PROXY;
           object controller_network_interface {
@@ -2437,9 +2439,9 @@ object house {
           setpoint cooling_setpoint;
           target air_temperature;
           deadband thermostat_deadband;
-          bid_deadband_ends true;
-          average_target current_price_mean_24h;
-          standard_deviation_target current_price_stdev_24h;
+          use_predictive_bidding true;
+          average_target current_price_mean_2h;
+          standard_deviation_target current_price_stdev_2h;
           period 300;
           demand last_cooling_load;
            range_high 6.000;
@@ -2516,7 +2518,7 @@ object house {
           name F3_C_17;
           use_override ON;
           override override;
-          market Market2;
+          market Market3;
           schedule_skew 769;
           bid_mode PROXY;
           object controller_network_interface {
@@ -2529,9 +2531,9 @@ object house {
           setpoint cooling_setpoint;
           target air_temperature;
           deadband thermostat_deadband;
-          bid_deadband_ends true;
-          average_target current_price_mean_24h;
-          standard_deviation_target current_price_stdev_24h;
+          use_predictive_bidding true;
+          average_target current_price_mean_2h;
+          standard_deviation_target current_price_stdev_2h;
           period 300;
           demand last_cooling_load;
            range_high 0.000;
@@ -2674,7 +2676,7 @@ object house {
           name F3_C_18;
           use_override ON;
           override override;
-          market Market2;
+          market Market3;
           schedule_skew 63;
           bid_mode PROXY;
           object controller_network_interface {
@@ -2687,9 +2689,9 @@ object house {
           setpoint cooling_setpoint;
           target air_temperature;
           deadband thermostat_deadband;
-          bid_deadband_ends true;
-          average_target current_price_mean_24h;
-          standard_deviation_target current_price_stdev_24h;
+          use_predictive_bidding true;
+          average_target current_price_mean_2h;
+          standard_deviation_target current_price_stdev_2h;
           period 300;
           demand last_cooling_load;
            range_high 4.000;
@@ -2832,7 +2834,7 @@ object house {
           name F3_C_19;
           use_override ON;
           override override;
-          market Market2;
+          market Market3;
           schedule_skew -492;
           bid_mode PROXY;
           object controller_network_interface {
@@ -2845,9 +2847,9 @@ object house {
           setpoint cooling_setpoint;
           target air_temperature;
           deadband thermostat_deadband;
-          bid_deadband_ends true;
-          average_target current_price_mean_24h;
-          standard_deviation_target current_price_stdev_24h;
+          use_predictive_bidding true;
+          average_target current_price_mean_2h;
+          standard_deviation_target current_price_stdev_2h;
           period 300;
           demand last_cooling_load;
            range_high 4.000;
@@ -2990,7 +2992,7 @@ object house {
           name F3_C_20;
           use_override ON;
           override override;
-          market Market2;
+          market Market3;
           schedule_skew 266;
           bid_mode PROXY;
           object controller_network_interface {
@@ -3003,9 +3005,9 @@ object house {
           setpoint cooling_setpoint;
           target air_temperature;
           deadband thermostat_deadband;
-          bid_deadband_ends true;
-          average_target current_price_mean_24h;
-          standard_deviation_target current_price_stdev_24h;
+          use_predictive_bidding true;
+          average_target current_price_mean_2h;
+          standard_deviation_target current_price_stdev_2h;
           period 300;
           demand last_cooling_load;
            range_high 4.000;
@@ -3148,7 +3150,7 @@ object house {
           name F3_C_21;
           use_override ON;
           override override;
-          market Market2;
+          market Market3;
           schedule_skew 1356;
           bid_mode PROXY;
           object controller_network_interface {
@@ -3161,9 +3163,9 @@ object house {
           setpoint cooling_setpoint;
           target air_temperature;
           deadband thermostat_deadband;
-          bid_deadband_ends true;
-          average_target current_price_mean_24h;
-          standard_deviation_target current_price_stdev_24h;
+          use_predictive_bidding true;
+          average_target current_price_mean_2h;
+          standard_deviation_target current_price_stdev_2h;
           period 300;
           demand last_cooling_load;
            range_high 6.000;
@@ -3306,7 +3308,7 @@ object house {
           name F3_C_22;
           use_override ON;
           override override;
-          market Market2;
+          market Market3;
           schedule_skew 322;
           bid_mode PROXY;
           object controller_network_interface {
@@ -3319,9 +3321,9 @@ object house {
           setpoint cooling_setpoint;
           target air_temperature;
           deadband thermostat_deadband;
-          bid_deadband_ends true;
-          average_target current_price_mean_24h;
-          standard_deviation_target current_price_stdev_24h;
+          use_predictive_bidding true;
+          average_target current_price_mean_2h;
+          standard_deviation_target current_price_stdev_2h;
           period 300;
           demand last_cooling_load;
            range_high 4.000;
@@ -3464,7 +3466,7 @@ object house {
           name F3_C_23;
           use_override ON;
           override override;
-          market Market2;
+          market Market3;
           schedule_skew -494;
           bid_mode PROXY;
           object controller_network_interface {
@@ -3477,9 +3479,9 @@ object house {
           setpoint cooling_setpoint;
           target air_temperature;
           deadband thermostat_deadband;
-          bid_deadband_ends true;
-          average_target current_price_mean_24h;
-          standard_deviation_target current_price_stdev_24h;
+          use_predictive_bidding true;
+          average_target current_price_mean_2h;
+          standard_deviation_target current_price_stdev_2h;
           period 300;
           demand last_cooling_load;
            range_high 6.000;
@@ -3622,7 +3624,7 @@ object house {
           name F3_C_24;
           use_override ON;
           override override;
-          market Market2;
+          market Market3;
           schedule_skew 1725;
           bid_mode PROXY;
           object controller_network_interface {
@@ -3635,9 +3637,9 @@ object house {
           setpoint cooling_setpoint;
           target air_temperature;
           deadband thermostat_deadband;
-          bid_deadband_ends true;
-          average_target current_price_mean_24h;
-          standard_deviation_target current_price_stdev_24h;
+          use_predictive_bidding true;
+          average_target current_price_mean_2h;
+          standard_deviation_target current_price_stdev_2h;
           period 300;
           demand last_cooling_load;
            range_high 4.000;
@@ -3780,7 +3782,7 @@ object house {
           name F3_C_25;
           use_override ON;
           override override;
-          market Market2;
+          market Market3;
           schedule_skew 633;
           bid_mode PROXY;
           object controller_network_interface {
@@ -3793,9 +3795,9 @@ object house {
           setpoint cooling_setpoint;
           target air_temperature;
           deadband thermostat_deadband;
-          bid_deadband_ends true;
-          average_target current_price_mean_24h;
-          standard_deviation_target current_price_stdev_24h;
+          use_predictive_bidding true;
+          average_target current_price_mean_2h;
+          standard_deviation_target current_price_stdev_2h;
           period 300;
           demand last_cooling_load;
            range_high 6.000;
@@ -3872,7 +3874,7 @@ object house {
           name F3_C_26;
           use_override ON;
           override override;
-          market Market2;
+          market Market3;
           schedule_skew 300;
           bid_mode PROXY;
           object controller_network_interface {
@@ -3885,9 +3887,9 @@ object house {
           setpoint cooling_setpoint;
           target air_temperature;
           deadband thermostat_deadband;
-          bid_deadband_ends true;
-          average_target current_price_mean_24h;
-          standard_deviation_target current_price_stdev_24h;
+          use_predictive_bidding true;
+          average_target current_price_mean_2h;
+          standard_deviation_target current_price_stdev_2h;
           period 300;
           demand last_cooling_load;
            range_high 6.000;
@@ -4030,7 +4032,7 @@ object house {
           name F3_C_27;
           use_override ON;
           override override;
-          market Market2;
+          market Market3;
           schedule_skew 233;
           bid_mode PROXY;
           object controller_network_interface {
@@ -4043,9 +4045,9 @@ object house {
           setpoint cooling_setpoint;
           target air_temperature;
           deadband thermostat_deadband;
-          bid_deadband_ends true;
-          average_target current_price_mean_24h;
-          standard_deviation_target current_price_stdev_24h;
+          use_predictive_bidding true;
+          average_target current_price_mean_2h;
+          standard_deviation_target current_price_stdev_2h;
           period 300;
           demand last_cooling_load;
            range_high 8.000;
@@ -4188,7 +4190,7 @@ object house {
           name F3_C_28;
           use_override ON;
           override override;
-          market Market2;
+          market Market3;
           schedule_skew -1618;
           bid_mode PROXY;
           object controller_network_interface {
@@ -4201,9 +4203,9 @@ object house {
           setpoint cooling_setpoint;
           target air_temperature;
           deadband thermostat_deadband;
-          bid_deadband_ends true;
-          average_target current_price_mean_24h;
-          standard_deviation_target current_price_stdev_24h;
+          use_predictive_bidding true;
+          average_target current_price_mean_2h;
+          standard_deviation_target current_price_stdev_2h;
           period 300;
           demand last_cooling_load;
            range_high 0.000;
@@ -4280,7 +4282,7 @@ object house {
           name F3_C_29;
           use_override ON;
           override override;
-          market Market2;
+          market Market3;
           schedule_skew -491;
           bid_mode PROXY;
           object controller_network_interface {
@@ -4293,9 +4295,9 @@ object house {
           setpoint cooling_setpoint;
           target air_temperature;
           deadband thermostat_deadband;
-          bid_deadband_ends true;
-          average_target current_price_mean_24h;
-          standard_deviation_target current_price_stdev_24h;
+          use_predictive_bidding true;
+          average_target current_price_mean_2h;
+          standard_deviation_target current_price_stdev_2h;
           period 300;
           demand last_cooling_load;
            range_high 0.000;
@@ -4438,7 +4440,7 @@ object house {
           name F3_C_30;
           use_override ON;
           override override;
-          market Market2;
+          market Market3;
           schedule_skew 1118;
           bid_mode PROXY;
           object controller_network_interface {
@@ -4451,9 +4453,9 @@ object house {
           setpoint cooling_setpoint;
           target air_temperature;
           deadband thermostat_deadband;
-          bid_deadband_ends true;
-          average_target current_price_mean_24h;
-          standard_deviation_target current_price_stdev_24h;
+          use_predictive_bidding true;
+          average_target current_price_mean_2h;
+          standard_deviation_target current_price_stdev_2h;
           period 300;
           demand last_cooling_load;
            range_high 8.000;
@@ -4596,7 +4598,7 @@ object house {
           name F3_C_31;
           use_override ON;
           override override;
-          market Market2;
+          market Market3;
           schedule_skew -1927;
           bid_mode PROXY;
           object controller_network_interface {
@@ -4609,9 +4611,9 @@ object house {
           setpoint cooling_setpoint;
           target air_temperature;
           deadband thermostat_deadband;
-          bid_deadband_ends true;
-          average_target current_price_mean_24h;
-          standard_deviation_target current_price_stdev_24h;
+          use_predictive_bidding true;
+          average_target current_price_mean_2h;
+          standard_deviation_target current_price_stdev_2h;
           period 300;
           demand last_cooling_load;
            range_high 6.000;
@@ -4754,7 +4756,7 @@ object house {
           name F3_C_32;
           use_override ON;
           override override;
-          market Market2;
+          market Market3;
           schedule_skew 1162;
           bid_mode PROXY;
           object controller_network_interface {
@@ -4767,9 +4769,9 @@ object house {
           setpoint cooling_setpoint;
           target air_temperature;
           deadband thermostat_deadband;
-          bid_deadband_ends true;
-          average_target current_price_mean_24h;
-          standard_deviation_target current_price_stdev_24h;
+          use_predictive_bidding true;
+          average_target current_price_mean_2h;
+          standard_deviation_target current_price_stdev_2h;
           period 300;
           demand last_cooling_load;
            range_high 4.000;
@@ -4901,7 +4903,7 @@ object house {
           name F3_C_33;
           use_override ON;
           override override;
-          market Market2;
+          market Market3;
           schedule_skew -1229;
           bid_mode PROXY;
           object controller_network_interface {
@@ -4914,9 +4916,9 @@ object house {
           setpoint cooling_setpoint;
           target air_temperature;
           deadband thermostat_deadband;
-          bid_deadband_ends true;
-          average_target current_price_mean_24h;
-          standard_deviation_target current_price_stdev_24h;
+          use_predictive_bidding true;
+          average_target current_price_mean_2h;
+          standard_deviation_target current_price_stdev_2h;
           period 300;
           demand last_cooling_load;
            range_high 6.000;
@@ -5059,7 +5061,7 @@ object house {
           name F3_C_34;
           use_override ON;
           override override;
-          market Market2;
+          market Market3;
           schedule_skew 1551;
           bid_mode PROXY;
           object controller_network_interface {
@@ -5072,9 +5074,9 @@ object house {
           setpoint cooling_setpoint;
           target air_temperature;
           deadband thermostat_deadband;
-          bid_deadband_ends true;
-          average_target current_price_mean_24h;
-          standard_deviation_target current_price_stdev_24h;
+          use_predictive_bidding true;
+          average_target current_price_mean_2h;
+          standard_deviation_target current_price_stdev_2h;
           period 300;
           demand last_cooling_load;
            range_high 6.000;
@@ -5151,7 +5153,7 @@ object house {
           name F3_C_35;
           use_override ON;
           override override;
-          market Market2;
+          market Market3;
           schedule_skew 516;
           bid_mode PROXY;
           object controller_network_interface {
@@ -5164,9 +5166,9 @@ object house {
           setpoint cooling_setpoint;
           target air_temperature;
           deadband thermostat_deadband;
-          bid_deadband_ends true;
-          average_target current_price_mean_24h;
-          standard_deviation_target current_price_stdev_24h;
+          use_predictive_bidding true;
+          average_target current_price_mean_2h;
+          standard_deviation_target current_price_stdev_2h;
           period 300;
           demand last_cooling_load;
            range_high 4.000;
@@ -5309,7 +5311,7 @@ object house {
           name F3_C_36;
           use_override ON;
           override override;
-          market Market2;
+          market Market3;
           schedule_skew -952;
           bid_mode PROXY;
           object controller_network_interface {
@@ -5322,9 +5324,9 @@ object house {
           setpoint cooling_setpoint;
           target air_temperature;
           deadband thermostat_deadband;
-          bid_deadband_ends true;
-          average_target current_price_mean_24h;
-          standard_deviation_target current_price_stdev_24h;
+          use_predictive_bidding true;
+          average_target current_price_mean_2h;
+          standard_deviation_target current_price_stdev_2h;
           period 300;
           demand last_cooling_load;
            range_high 4.000;
@@ -5467,7 +5469,7 @@ object house {
           name F3_C_37;
           use_override ON;
           override override;
-          market Market2;
+          market Market3;
           schedule_skew 261;
           bid_mode PROXY;
           object controller_network_interface {
@@ -5480,9 +5482,9 @@ object house {
           setpoint cooling_setpoint;
           target air_temperature;
           deadband thermostat_deadband;
-          bid_deadband_ends true;
-          average_target current_price_mean_24h;
-          standard_deviation_target current_price_stdev_24h;
+          use_predictive_bidding true;
+          average_target current_price_mean_2h;
+          standard_deviation_target current_price_stdev_2h;
           period 300;
           demand last_cooling_load;
            range_high 0.000;
@@ -5625,7 +5627,7 @@ object house {
           name F3_C_38;
           use_override ON;
           override override;
-          market Market2;
+          market Market3;
           schedule_skew 2866;
           bid_mode PROXY;
           object controller_network_interface {
@@ -5638,9 +5640,9 @@ object house {
           setpoint cooling_setpoint;
           target air_temperature;
           deadband thermostat_deadband;
-          bid_deadband_ends true;
-          average_target current_price_mean_24h;
-          standard_deviation_target current_price_stdev_24h;
+          use_predictive_bidding true;
+          average_target current_price_mean_2h;
+          standard_deviation_target current_price_stdev_2h;
           period 300;
           demand last_cooling_load;
            range_high 4.000;
@@ -5772,7 +5774,7 @@ object house {
           name F3_C_39;
           use_override ON;
           override override;
-          market Market2;
+          market Market3;
           schedule_skew -1586;
           bid_mode PROXY;
           object controller_network_interface {
@@ -5785,9 +5787,9 @@ object house {
           setpoint cooling_setpoint;
           target air_temperature;
           deadband thermostat_deadband;
-          bid_deadband_ends true;
-          average_target current_price_mean_24h;
-          standard_deviation_target current_price_stdev_24h;
+          use_predictive_bidding true;
+          average_target current_price_mean_2h;
+          standard_deviation_target current_price_stdev_2h;
           period 300;
           demand last_cooling_load;
            range_high 6.000;
@@ -5930,7 +5932,7 @@ object house {
           name F3_C_40;
           use_override ON;
           override override;
-          market Market2;
+          market Market3;
           schedule_skew -713;
           bid_mode PROXY;
           object controller_network_interface {
@@ -5943,9 +5945,9 @@ object house {
           setpoint cooling_setpoint;
           target air_temperature;
           deadband thermostat_deadband;
-          bid_deadband_ends true;
-          average_target current_price_mean_24h;
-          standard_deviation_target current_price_stdev_24h;
+          use_predictive_bidding true;
+          average_target current_price_mean_2h;
+          standard_deviation_target current_price_stdev_2h;
           period 300;
           demand last_cooling_load;
            range_high 6.000;
@@ -6088,7 +6090,7 @@ object house {
           name F3_C_41;
           use_override ON;
           override override;
-          market Market2;
+          market Market3;
           schedule_skew 367;
           bid_mode PROXY;
           object controller_network_interface {
@@ -6101,9 +6103,9 @@ object house {
           setpoint cooling_setpoint;
           target air_temperature;
           deadband thermostat_deadband;
-          bid_deadband_ends true;
-          average_target current_price_mean_24h;
-          standard_deviation_target current_price_stdev_24h;
+          use_predictive_bidding true;
+          average_target current_price_mean_2h;
+          standard_deviation_target current_price_stdev_2h;
           period 300;
           demand last_cooling_load;
            range_high 8.000;
@@ -6246,7 +6248,7 @@ object house {
           name F3_C_42;
           use_override ON;
           override override;
-          market Market2;
+          market Market3;
           schedule_skew 676;
           bid_mode PROXY;
           object controller_network_interface {
@@ -6259,9 +6261,9 @@ object house {
           setpoint cooling_setpoint;
           target air_temperature;
           deadband thermostat_deadband;
-          bid_deadband_ends true;
-          average_target current_price_mean_24h;
-          standard_deviation_target current_price_stdev_24h;
+          use_predictive_bidding true;
+          average_target current_price_mean_2h;
+          standard_deviation_target current_price_stdev_2h;
           period 300;
           demand last_cooling_load;
            range_high 2.000;
@@ -6393,7 +6395,7 @@ object house {
           name F3_C_43;
           use_override ON;
           override override;
-          market Market2;
+          market Market3;
           schedule_skew -55;
           bid_mode PROXY;
           object controller_network_interface {
@@ -6406,9 +6408,9 @@ object house {
           setpoint cooling_setpoint;
           target air_temperature;
           deadband thermostat_deadband;
-          bid_deadband_ends true;
-          average_target current_price_mean_24h;
-          standard_deviation_target current_price_stdev_24h;
+          use_predictive_bidding true;
+          average_target current_price_mean_2h;
+          standard_deviation_target current_price_stdev_2h;
           period 300;
           demand last_cooling_load;
            range_high 4.000;
@@ -6551,7 +6553,7 @@ object house {
           name F3_C_44;
           use_override ON;
           override override;
-          market Market2;
+          market Market3;
           schedule_skew 443;
           bid_mode PROXY;
           object controller_network_interface {
@@ -6564,9 +6566,9 @@ object house {
           setpoint cooling_setpoint;
           target air_temperature;
           deadband thermostat_deadband;
-          bid_deadband_ends true;
-          average_target current_price_mean_24h;
-          standard_deviation_target current_price_stdev_24h;
+          use_predictive_bidding true;
+          average_target current_price_mean_2h;
+          standard_deviation_target current_price_stdev_2h;
           period 300;
           demand last_cooling_load;
            range_high 0.000;
@@ -6709,7 +6711,7 @@ object house {
           name F3_C_45;
           use_override ON;
           override override;
-          market Market2;
+          market Market3;
           schedule_skew 1086;
           bid_mode PROXY;
           object controller_network_interface {
@@ -6722,9 +6724,9 @@ object house {
           setpoint cooling_setpoint;
           target air_temperature;
           deadband thermostat_deadband;
-          bid_deadband_ends true;
-          average_target current_price_mean_24h;
-          standard_deviation_target current_price_stdev_24h;
+          use_predictive_bidding true;
+          average_target current_price_mean_2h;
+          standard_deviation_target current_price_stdev_2h;
           period 300;
           demand last_cooling_load;
            range_high 6.000;
@@ -6856,7 +6858,7 @@ object house {
           name F3_C_46;
           use_override ON;
           override override;
-          market Market2;
+          market Market3;
           schedule_skew 447;
           bid_mode PROXY;
           object controller_network_interface {
@@ -6869,9 +6871,9 @@ object house {
           setpoint cooling_setpoint;
           target air_temperature;
           deadband thermostat_deadband;
-          bid_deadband_ends true;
-          average_target current_price_mean_24h;
-          standard_deviation_target current_price_stdev_24h;
+          use_predictive_bidding true;
+          average_target current_price_mean_2h;
+          standard_deviation_target current_price_stdev_2h;
           period 300;
           demand last_cooling_load;
            range_high 4.000;
@@ -7014,7 +7016,7 @@ object house {
           name F3_C_47;
           use_override ON;
           override override;
-          market Market2;
+          market Market3;
           schedule_skew 822;
           bid_mode PROXY;
           object controller_network_interface {
@@ -7027,9 +7029,9 @@ object house {
           setpoint cooling_setpoint;
           target air_temperature;
           deadband thermostat_deadband;
-          bid_deadband_ends true;
-          average_target current_price_mean_24h;
-          standard_deviation_target current_price_stdev_24h;
+          use_predictive_bidding true;
+          average_target current_price_mean_2h;
+          standard_deviation_target current_price_stdev_2h;
           period 300;
           demand last_cooling_load;
            range_high 4.000;
@@ -7172,7 +7174,7 @@ object house {
           name F3_C_48;
           use_override ON;
           override override;
-          market Market2;
+          market Market3;
           schedule_skew 1856;
           bid_mode PROXY;
           object controller_network_interface {
@@ -7185,9 +7187,9 @@ object house {
           setpoint cooling_setpoint;
           target air_temperature;
           deadband thermostat_deadband;
-          bid_deadband_ends true;
-          average_target current_price_mean_24h;
-          standard_deviation_target current_price_stdev_24h;
+          use_predictive_bidding true;
+          average_target current_price_mean_2h;
+          standard_deviation_target current_price_stdev_2h;
           period 300;
           demand last_cooling_load;
            range_high 2.000;
@@ -7264,7 +7266,7 @@ object house {
           name F3_C_49;
           use_override ON;
           override override;
-          market Market2;
+          market Market3;
           schedule_skew -233;
           bid_mode PROXY;
           object controller_network_interface {
@@ -7277,9 +7279,9 @@ object house {
           setpoint cooling_setpoint;
           target air_temperature;
           deadband thermostat_deadband;
-          bid_deadband_ends true;
-          average_target current_price_mean_24h;
-          standard_deviation_target current_price_stdev_24h;
+          use_predictive_bidding true;
+          average_target current_price_mean_2h;
+          standard_deviation_target current_price_stdev_2h;
           period 300;
           demand last_cooling_load;
            range_high 6.000;
@@ -7422,7 +7424,7 @@ object house {
           name F3_C_50;
           use_override ON;
           override override;
-          market Market2;
+          market Market3;
           schedule_skew -267;
           bid_mode PROXY;
           object controller_network_interface {
@@ -7435,9 +7437,9 @@ object house {
           setpoint cooling_setpoint;
           target air_temperature;
           deadband thermostat_deadband;
-          bid_deadband_ends true;
-          average_target current_price_mean_24h;
-          standard_deviation_target current_price_stdev_24h;
+          use_predictive_bidding true;
+          average_target current_price_mean_2h;
+          standard_deviation_target current_price_stdev_2h;
           period 300;
           demand last_cooling_load;
            range_high 6.000;
