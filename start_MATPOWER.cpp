@@ -13,10 +13,14 @@ Updated: 03/05/2014
 Updated: 03/21/2014
    Purpose: Added the possibility to change the generation/trsnmission topology, by making on generator go off-line.
             Branches could also be set-up to go off-line. (not implemented yet though).
-Last modified: 04/08/2014
+Updared: 04/08/2014
    Purpose: Ability to run both the regular power flow and the optimal power flow.
             The optimal power flow is going to be solved 5 seconds before the end of every minute,
             to be able to communicate the newly calculated price to GLD in time.
+Last modified: 05/02/2014
+   Purpose: Add the ability to receive a load profile as the "static load" at the feeder buses, profile that would simulate a real-life one day load profile
+   WARNING: Currently, the code is written to accomodate the model used, that is there are only 6 load buses (out of a total of 9 buses), and only 3 out of these 6
+            havenon-zero loads, where the profile is going to be modified such that it follows a 24h real-life-like shape.
 ==========================================================================================
 */
 #include <stdio.h>
@@ -49,6 +53,26 @@ mwArray mwArrayTranspose(int nrows, int ncolumns, mwArray matrix_in) {
       matrix_out(ind_row, ind_col) = matrix_in(ind_col, ind_row); } }
    return matrix_out; }
 
+void get_load_profile(char *file_name, double load_profile[][3])
+{
+   ifstream data_file(file_name, ios::in);
+   int ind = 0;
+   string curr_line;
+   if (data_file.is_open()){
+      cout << "======== Starting reading the load profile data. ========" << endl;
+      while (data_file.good()){
+         getline(data_file, curr_line);
+         sscanf(&curr_line[0], "%lf %lf %lf", &load_profile[ind][0], &load_profile[ind][1], &load_profile[ind][2]);
+         ind = ind + 1;
+      }
+      cout << "Reached the end of the file!!!!!!!!" << endl;
+      cout << "======== Done reading the load profile file!!!!!!!!! ====================" << endl;
+      data_file.close(); } // END OF if (data_file.is_open())
+   else {
+      cout << "Unable to open load profile file." << endl;
+      data_file.close(); }
+} // END OF get_data function
+
 char *nextline(char *buf) {
    char *tmp;
    tmp = strchr(buf, '\n');
@@ -78,7 +102,7 @@ void get_data(char *file_name, int nbrows, int nbcolumns, int ngrows, int ngcolu
               double *baseMVA, double *bus, double *gen,
               double *branch, double *area, double *costs, int *SubBusFNCS,
               char SubNameFNCS[][15], char MarketNameFNCS[][11],
-              int *offline_gen_bus)
+              int *offline_gen_bus, double *ampFactor)
 {
 // Open the file with the name given by the file name
 ifstream data_file(file_name, ios::in);
@@ -89,7 +113,7 @@ string curr_line; // string holding the line that I scurrently read
 if (data_file.is_open()) {
    cout << "======== Starting reading the data file. ======" << endl;
    while (data_file.good()) { // this will test the EOF mark
-      data_file >> ws;
+      // data_file >> ws;
       getline(data_file, curr_line);
       if (curr_line[0] != '%') {
          // ================== READING BASE MVA =========================================
@@ -247,6 +271,11 @@ if (data_file.is_open()) {
                ind = 0;
             }
          }
+         // =================== READING THE AMPLIFICATION FACTOR USED TO SIMULATE A HIGHER LOAD AT THE FEEDER ======================================
+         if (strncmp(&curr_line[0], "mpc.ampFactor =", 15) == 0) {
+            cout << "Reading the AMPLIFICATION FACTOR FOR THE FEEDER ..........................." << endl;
+            sscanf(&curr_line[0], "%*s = %lf %*s", ampFactor);
+         }
       } // END OF if (curr_line[0] != '%')
    } // END OF while (data_file.good())
    cout << "Reached the end of the file!!!!!!!!" << endl;
@@ -270,7 +299,18 @@ int run_main(int argc, char **argv) {
       try {
 // ================================ VARIABLE DECLARATION AND INITIALIZATION =============================================
          char file_name[] = {"case9.m"};
+         char load_profile_file[] = {"real_power_demand.txt"};
+         // load profile for the "static" load at all the buses
+         // it is known in advance that the load profile is only for 3 buses and for 24 hours at each 5 minutes (288 values taken repeatedly every day)
+         double real_power_demand[288][3], reactive_power_demand[288][3];
+         for (int i = 0; i < 288; i++) {
+            for (int j = 0; j < 3; j++) {
+               real_power_demand[i][j] = 0;
+               reactive_power_demand[i][j] = 0;
+            }
+         }
          double baseMVA, nomfreq;
+         double amp_fact; // amplification factor for the controlable load.
          // The powerflow solution is going to be calculated in the following variables
          mwArray mwMVAbase, mwBusOut, mwGenOut, mwBranchOut, f, success, info, et, g, jac, xr, pimul, mwGenCost;
          // Results from RUNPF or RUNOPF will be saved as in MATLAB in a mat file, and printed in a nice form in a file
@@ -357,7 +397,7 @@ int run_main(int argc, char **argv) {
          for (int i = 0; i < sizeof(subst_output_file_name)/sizeof(subst_output_file_name[0]); i++) {
             snprintf(subst_output_file_name[i], sizeof(subst_output_file_name[i]), "Substation_%d.csv", i+1);
             ofstream subst_output_file(subst_output_file_name[i], ios::out);
-            subst_output_file << "Time (seconds), Real Power Demand - PD (MW), Reactive Power Demand (MVAr), Substation V real (V), Substation V imag (V), LMP ($/MWh), LMP ($/MVAr)" << endl;
+            subst_output_file << "Time (seconds), Real Power Demand - PD (MW), Reactive Power Demand (MVAr), Substation V real (V), Substation V imag (V), LMP ($/kWh), LMP ($/kVArh)" << endl;
          }
          for (int i = 0; i < sizeof(gen_output_file_name)/sizeof(gen_output_file_name[0]); i++) {
             snprintf(gen_output_file_name[i], sizeof(gen_output_file_name[i]), "Generator_%d.csv", i+1);
@@ -399,9 +439,12 @@ int run_main(int argc, char **argv) {
 // ================================ END OF VARIABLE DECLARATION AND INITIALIZATION =============================================
 
          cout << "Just entered the MAIN function of the driver application." << endl;
+         // get load profile data
+         get_load_profile(load_profile_file, real_power_demand);
+         // get the MATPOWER model data
          get_data(file_name, nbrows, nbcolumns, ngrows, ngcolumns, nbrrows, nbrcolumns, narows, nacolumns,
                   ncrows, nccolumns, nFNCSrows, nFNCScolumns, noffgrows, noffgcolumns, &baseMVA, bus, gen,
-                  branch, area, costs, bus_num, sub_name, market_name, offline_gen_bus);
+                  branch, area, costs, bus_num, sub_name, market_name, offline_gen_bus, &amp_fact);
          mwBusT.SetData(bus, nbelem);
          // Transposing mwBusT to get the correct bus matrix
          // Careful: it is 1-base indexing because we are working with MATLAB type array mwArray
@@ -476,6 +519,10 @@ int run_main(int argc, char **argv) {
          cout << endl;
          cout << "==================================" << endl;
 
+         cout << "==================================" << endl;
+         cout << "mpc.ampFactor = " << amp_fact << endl;
+         cout << "==================================" << endl;
+
          // Initialize the MPC structure with the data read from the file
          mpc.Get("baseMVA", 1, 1).Set((mwArray) baseMVA);
          mpc.Get("bus", 1, 1).Set(mwBus);
@@ -506,7 +553,7 @@ int run_main(int argc, char **argv) {
          }
 
          // Find the index in the MATPOWER generator matrix corresponding to the buses that could be turned off
-         // The bus number and the actual index in the MATPOWER matrix may not coincide
+         // The bus number and the actual index in the MATPOWER matrix may not coincideprint(fig_handle, '-dpdf', '-r600', ['comparative_freq_res.pdf'])
          for (int off_ind = 0; off_ind < sizeof(offline_gen_bus)/sizeof(offline_gen_bus[0]); off_ind++){
             for (int gen_ind = 1; gen_ind <= ngrows; gen_ind++){ // in MATLAB indexes start from 1
                if((int) mpc.Get("gen", 1, 1).Get(2, gen_ind, 1) == offline_gen_bus[off_ind]){
@@ -538,14 +585,34 @@ int run_main(int argc, char **argv) {
             curr_hours = curr_time/3600;
             curr_minutes = (curr_time - 3600*curr_hours)/60;
             curr_seconds = curr_time - 3600*curr_hours - 60*curr_minutes;
+            // Setting the load at the load buses based on the load profiles
+            // In this case, the model has 6 load buses, out of which only 3 had non-zero values originally; so we stick to only those 
+            // getting in a one-day long profile. WARNING: if the model is changed these need to be readjusted
+            if (curr_time % 300 == 0) {
+               /*
+               cout << "\033[2J\033[1;1H"; // Just a trick to clear the screen before pritning the new results at the terminal
+               cout << "================== It has been " << curr_hours << " hours, " << curr_minutes << " minutes, and ";
+               cout << curr_seconds << " seconds. ========================" << endl;
+               cout << "index -->> " << 12 * (curr_hours % 24) + curr_minutes / 5 << endl;
+               */
+               for (int sub_ind = 0; sub_ind < sizeof(bus_num)/sizeof(bus_num[0]); sub_ind++) {
+                  mpc.Get("bus", 1, 1).Get(2, modified_bus_ind[sub_ind], 3).Set((mwArray) real_power_demand[12 * (curr_hours % 24) + curr_minutes / 5][sub_ind]);
+                  static_pd[sub_ind] = real_power_demand[12 * (curr_hours % 24) + curr_minutes / 5][sub_ind];
+                  // cout << "@ feeder " << sub_ind+1 << " -->> " << static_pd[sub_ind] << endl;
+                  // mpc.Get("bus", 1, 1).Get(2, modified_bus_ind[sub_ind], 4).Set((mwArray) reactive_power_demand[curr_hours % 24 + curr_minutes / 5][sub_ind]);
+                  // static_qd[sub_ind] = reactive_power_demand[curr_hours % 24 + curr_minutes / 5][sub_ind];
+               }
+            }
             // Setting up the status of the generators, based on the current time
             // Turning some generators out-of-service between certain time preiods in the simulation 
-            if ((curr_hours % 24 >= 3 && curr_hours % 24 < 4) || (curr_hours % 24 >= 6 && curr_hours % 24 < 7)){ // every day between 1 and 2 or 3 and 4
+            // every day between 6 and 7 or 18 and 19 !!! WARNING !!! These hours are hard coded assuming we run more than 24 hours
+            if ((curr_hours % 24 >= 6 && curr_hours % 24 < 7) || (curr_hours % 24 >= 18 && curr_hours % 24 < 19)){ 
                for (int off_ind = 0; off_ind < sizeof(offline_gen_ind)/sizeof(offline_gen_ind[0]); off_ind++){
                   if ((double) mpc.Get("gen", 1, 1).Get(2, offline_gen_ind[off_ind], 8) == 1){ // if generator is ON
                      mpc.Get("gen", 1, 1).Get(2, offline_gen_ind[off_ind], 8).Set((mwArray) 0); // turn generator OFF, and set flag that topology has changed
                      topology_changed = topology_changed || true; // signal that at least one generator changed its state
 //                     mesg_snt = mesg_snt || true; // signal that at least one generator changed its state
+                     // Uncomment after testing the load profile loading correctly
                      cout << "============ Generator at bus " << mpc.Get("gen", 1, 1).Get(2, offline_gen_ind[off_ind], 1);
                      cout << " is put OUT-OF-SERVICE. ==================" << endl;
                   }
@@ -557,6 +624,7 @@ int run_main(int argc, char **argv) {
                      mpc.Get("gen", 1, 1).Get(2, offline_gen_ind[off_ind], 8).Set((mwArray) 1); // turn generator ON, and set flag that topology changed
                      topology_changed = topology_changed || true;// signal that at least one generator changed its state
 //                     mesg_snt = mesg_snt || true; // signal that at least one generator changed its state
+                     // Uncomment after testing the load profile loading correctly
                      cout << "============ Generator at bus " << mpc.Get("gen", 1, 1).Get(2, offline_gen_ind[off_ind], 1);
                      cout << " is brought back IN-SERVICE. ==================" << endl;
                   }
@@ -584,21 +652,23 @@ int run_main(int argc, char **argv) {
                   // cout << "Reactive power in MVAr:\t";
                   // cin >> bus_valueIm[sub_ind];
                   // It is assumed that the load at the bus consists of the initial constant load plus a controllable load coming from distribution (GridLAB-D)
-                  // To simulate the idea of having a more substantial change in load at the substantion level, consider we have 100 similar models at on node
+                  // To simulate the idea of having a more substantial change in load at the substantion level, consider we have amp_fact similar models at on node
                   // That is why I multiply by 100 below.
-                  mpc.Get("bus", 1, 1).Get(2, modified_bus_ind[sub_ind], 3).Set((mwArray) (static_pd[sub_ind] + 100*bus_valueReal[sub_ind]));
-                  mpc.Get("bus", 1, 1).Get(2, modified_bus_ind[sub_ind], 4).Set((mwArray) (static_qd[sub_ind] + 100*bus_valueIm[sub_ind]));
+                  mpc.Get("bus", 1, 1).Get(2, modified_bus_ind[sub_ind], 3).Set((mwArray) (static_pd[sub_ind] + amp_fact*bus_valueReal[sub_ind]));
+                  mpc.Get("bus", 1, 1).Get(2, modified_bus_ind[sub_ind], 4).Set((mwArray) (static_qd[sub_ind] + amp_fact*bus_valueIm[sub_ind]));
                } // end IF(mesgc)
             } // end FOR(sub_ind)
 
             if (mesg_rcv){
                // ==========================================================================================================
+               // Uncomment after testing the load profile loading correctly
                cout << "\033[2J\033[1;1H"; // Just a trick to clear the screen before pritning the new results at the terminal
-                     cout << "================== It has been " << curr_hours << " hours, " << curr_minutes << " minutes, and ";
-                     cout << curr_seconds << " seconds. ========================" << endl;
+               cout << "================== It has been " << curr_hours << " hours, " << curr_minutes << " minutes, and ";
+               cout << curr_seconds << " seconds. ========================" << endl;
                cout << "================== GLD initiating message after changes at the distribution level. ==================" << endl;
                for (int sub_ind = 0; sub_ind < sizeof(bus_num)/sizeof(bus_num[0]); sub_ind++) {
                   if (mesgc[sub_ind] == 1) {
+                     // Uncomment after testing the load profile loading correctly
                      cout << "================== NEW LOAD AT " << sub_name[sub_ind] << " AT BUS " << bus_num[sub_ind] << " =====================" << endl;
                      cout << "ACTIVE power required at the bus: " << mpc.Get("bus", 1, 1).Get(2, modified_bus_ind[sub_ind], 3) << " MW." << endl;
                      cout << "REACTIVE power required at the bus: " << mpc.Get("bus", 1, 1).Get(2, modified_bus_ind[sub_ind], 4) << " MW." << endl;
@@ -606,6 +676,7 @@ int run_main(int argc, char **argv) {
                      prev_time[sub_ind] = curr_time;
                   }
                   else {
+                     // Uncomment after testing the load profile loading correctly
                      cout << "================== NO LOAD CHANGE AT " << sub_name[sub_ind] << " AT BUS " << bus_num[sub_ind] << " =====================" << endl;
                   } // end IF(mesgc)
                } // end FOR(sub_ind)
@@ -640,6 +711,7 @@ int run_main(int argc, char **argv) {
 
             if (mesg_rcv || mesg_snt) {
                if (mesg_snt) { // only cleaning the screen when MATPOWER initiates the message transfer; otherwise is cleaned when message is received
+                  // Uncomment after testing the load profile loading correctly
                   cout << "\033[2J\033[1;1H"; // Just a trick to clear the screen before pritning the new results at the terminal
                   if (curr_time % 300 == 295 && !topology_changed) {
                      cout << "================== It has been " << curr_hours << " hours, " << curr_minutes << " minutes, and ";
@@ -668,16 +740,16 @@ int run_main(int argc, char **argv) {
                   // =========================================================================================================================
                   // Price will be sent only when an OPF has been solved
                   if (solved_opf) {
-                     realLMP[sub_ind] = (double) mwBusOut.Get(2, modified_bus_ind[sub_ind], 14); // local marginal price based on the Lagrange multiplier on real power mismatch (column 14 of the output bus matrix
+                     realLMP[sub_ind] = (double) mwBusOut.Get(2, modified_bus_ind[sub_ind], 14)/1000; // local marginal price based on the Lagrange multiplier on real power mismatch (column 14 of the output bus matrix
                      // =========================================================================================================================
                      // Uncomment the line below when running with FNCS
                      sendprice(&realLMP[sub_ind], market_name[sub_ind]);
                      // =========================================================================================================================
-                     imagLMP[sub_ind] = (double) mwBusOut.Get(2, modified_bus_ind[sub_ind], 15); // local marginal price based on the Lagrange multiplier on reactive power mismatch (column 14 of the output bus matrix
+                     imagLMP[sub_ind] = (double) mwBusOut.Get(2, modified_bus_ind[sub_ind], 15)/1000; // local marginal price based on the Lagrange multiplier on reactive power mismatch (column 14 of the output bus matrix
                      cout << "================== SENDING OUT THE LMP TO " << sub_name[sub_ind];
                      cout << " AT BUS " << mpc.Get("bus", 1, 1).Get(2, modified_bus_ind[sub_ind], 1) << " =====================" << endl;
-                     cout << "LMP (Lagrange multiplier on real power mismatch) -->> " << realLMP[sub_ind] << endl;
-                     cout << "LMP (Lagrange multiplier on reactive power mismatch) -->> " << imagLMP[sub_ind] << endl;
+                     cout << "LMP (Lagrange multiplier on real power mismatch) -->> " << realLMP[sub_ind] << " $/kWh." << endl;
+                     cout << "LMP (Lagrange multiplier on reactive power mismatch) -->> " << imagLMP[sub_ind] << " $/kVArh." << endl;
                      cout << "=================================================================" << endl;
                   }
                }
@@ -693,9 +765,9 @@ int run_main(int argc, char **argv) {
             }
             // Line Below is from when running off-line, without FNCS
             // curr_time = curr_time + 1;
-         }while(synchronize(!mesg_rcv || !mesg_snt));
-          // use while(!mesg_rcv || !mesg_snt); when running off-line from FNCS
-          // use while(synchronize(!mesg_rcv || !mesg_snt)); when involving FNCS
+         }while(synchronize(!mesg_rcv || !mesg_snt)); // when involving FNCS
+          // use while(!mesg_rcv || !mesg_snt); // when running off-line from FNCS
+          // use while(synchronize(!mesg_rcv || !mesg_snt)); // when involving FNCS
 
          cout << "Just executed the MATLAB function from the shared library." << endl;
          subst_output_file.close();

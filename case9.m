@@ -29,6 +29,9 @@ mpc.MarketNameFNCS = [
 mpc.offlineGenBus = [
        3 ];       
 %% ======================================================================
+%% An amplification factor is used to simulate a higher load at the feeder end
+mpc.ampFactor = 4;
+%% ======================================================================
 
 %%-----  Power Flow Data  -----%%
 %% system MVA base
@@ -59,12 +62,13 @@ mpc.gen = [
 ];
 
 %% branch data
+% branch  5-6 (row 3) column 6 (rateA) has been reduced from 150 to 45 to have the line congested and result in different LMPs from DC OPF
 mpc.branchData = [ 9 13 ];
 %	fbus	tbus	r	x	b	rateA	rateB	rateC	ratio	angle	status	angmin	angmax
 mpc.branch = [
 	1	4	0	0.0576	0	250	250	250	0	0	1	-360	360;
 	4	5	0.017	0.092	0.158	250	250	250	0	0	1	-360	360;
-	5	6	0.039	0.17	0.358	150	150	150	0	0	1	-360	360;
+	5	6	0.039	0.17	0.358	 45	150	150	0	0	1	-360	360;
 	3	6	0	0.0586	0	300	300	300	0	0	1	-360	360;
 	6	7	0.0119	0.1008	0.209	150	150	150	0	0	1	-360	360;
 	7	8	0.0085	0.072	0.149	250	250	250	0	0	1	-360	360;
