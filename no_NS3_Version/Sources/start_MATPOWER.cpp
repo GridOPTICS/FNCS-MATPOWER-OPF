@@ -23,10 +23,11 @@ Updated: 05/02/2014
             have non-zero loads, where the profile is going to be modified such that it follows a 24h real-life-like shape.
 Updated: 06/17/2014
    Purpose: Took out some of the functions to separate cpp files and created read_input_data.h header that includes all the functions required to read the simulation model.\
-Last updated: 07/02/2014
+Updated: 07/02/2014
    Purpose: Modified the read load profile function in read_load_profile.cpp, to be able to read as many profiles as neccessary, depending on how many substations I have.
             Basically, the load profile data comes into a file containing 288 values per row (every 5-minute data for 24 hours), and a number of rows greater than or equal to the number of substations.
-            
+Last updated: 07/23/2014
+   Purpose: Added NS3_flag that allows to call the corresponding sendprice function, depending on whether NS-3 is used ot not
 ==========================================================================================
 */
 #include <stdio.h>
