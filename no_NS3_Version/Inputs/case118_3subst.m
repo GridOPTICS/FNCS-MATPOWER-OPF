@@ -25,43 +25,22 @@ mpc.version = '2';
 %% Flag to specify is NS3 (communication simulator) is used. The distinction comes at the way the price is sent from MATPOWER to GridLAB-D, either directly (no NS3) or through network (with NS3)
 mpc.NS3_flag = 0; % 0 ~ No NS3, 1 ~ with NS3
 % Number of distribution feeders (GridLAB-D instances)
-mpc.SubBusFNCSNum = 10;
+mpc.SubBusFNCSNum = 3;
 % Busses where substations are
 mpc.SubBusFNCS = [
                67;
                84;
-               33;
-               57;
-              115;
-               43;
-               98;
-               79;
-               47;
-              118;];
+               33;];
 %% Substation names
 mpc.SubNameFNCS = [
                 SUBSTATIONCOM1
                 SUBSTATIONCOM2
-                SUBSTATIONCOM3 
-                SUBSTATIONCOM4
-                SUBSTATIONCOM5
-                SUBSTATIONCOM6
-                SUBSTATIONCOM7
-                SUBSTATIONCOM8
-                SUBSTATIONCOM9
-                SUBSTATIONCOM10 ];
+                SUBSTATIONCOM3  ];
 %% Market names corresponding to each substation
 mpc.MarketNameFNCS = [
                 MarkNIF1
                 MarkNIF2 
-                MarkNIF3 
-                MarkNIF4
-                MarkNIF5
-                MarkNIF6
-                MarkNIF7
-                MarkNIF8
-                MarkNIF9
-                MarkNIF10 ];
+                MarkNIF3  ];
 
 %% ======================================================================
 %% For creating scenarios for visualization

@@ -86,7 +86,7 @@ int run_main(int argc, char **argv) {
          // Declaration of dimension variables.
          int nbrows = 0, nbcolumns = 0, ngrows = 0, ngcolumns = 0;
          int nbrrows = 0, nbrcolumns = 0, narows = 0, nacolumns = 0;
-         int ncrows = 0, nccolumns = 0, nFNCSelem = 0, noffgelem = 0;
+         int ncrows = 0, nccolumns = 0, nFNCSelem = 0, noffgelem = 0, NS3_flag = 0;
 
          read_model_dim(file_name, &nbrows, &nbcolumns, &ngrows, &ngcolumns,
               &nbrrows, &nbrcolumns, &narows, &nacolumns,
@@ -258,7 +258,7 @@ int run_main(int argc, char **argv) {
          // get the MATPOWER model data
          read_model_data(file_name, nbrows, nbcolumns, ngrows, ngcolumns, nbrrows, nbrcolumns, narows, nacolumns,
                   ncrows, nccolumns, nFNCSelem, noffgelem, &baseMVA, bus, gen,
-                  branch, area, costs, bus_num, sub_name, market_name, offline_gen_bus, &amp_fact);
+                  branch, area, costs, bus_num, sub_name, market_name, offline_gen_bus, &amp_fact, &NS3_flag);
          mwBusT.SetData(bus, nbelem);
          // Transposing mwBusT to get the correct bus matrix
          // Careful: it is 1-base indexing because we are working with MATLAB type array mwArray
@@ -268,10 +268,10 @@ int run_main(int argc, char **argv) {
          cout << "============= TESTING THROUGH VISUALIZATION... HAHAHAHAHAHAHA =============" << endl;
          cout << "baseMVA = " << baseMVA << endl;
          cout << "=================================" << endl;
-         // cout << "mwBusT = " << mwBusT << endl;
-         // cout << "==================================" << endl;
-         cout << "mwBus = " << mwBus << endl;
+         cout << "NS3 flag = " << NS3_flag << endl;
          cout << "==================================" << endl;
+         // cout << "mwBus = " << mwBus << endl;
+         // cout << "==================================" << endl;
 
          mwGenT.SetData(gen, ngelem);
          mwGen = mwArrayTranspose(ngrows, ngcolumns, mwGenT);
@@ -556,9 +556,22 @@ int run_main(int argc, char **argv) {
                   if (solved_opf) {
                      realLMP[sub_ind] = (double) mwBusOut.Get(2, modified_bus_ind[sub_ind], 14)/1000; // local marginal price based on the Lagrange multiplier on real power mismatch (column 14 of the output bus matrix
                      // =========================================================================================================================
-                     // Uncomment the line below when running with FNCS
-                     sendprice_noNS3(&realLMP[sub_ind], &bus_num[sub_ind], market_name[sub_ind]);
-                     // =========================================================================================================================
+                     if (NS3_flag == 1) {
+                        // If NS3 is envolved, call this SENDPRICE function
+                        // Uncomment the line below when running with FNCS and with NS3
+                        printf("Price sent through NS3!!!!!!!!!!\n");
+                        sendprice(&realLMP[sub_ind], market_name[sub_ind]);
+                     }
+                     else if (NS3_flag == 0){
+                        // Uncomment the line below when running with FNCS and without NS3
+                        printf("Price sent directly to Gridlab-D!!!!! No NS3 involved.\n");
+                        sendprice_noNS3(&realLMP[sub_ind], &bus_num[sub_ind], market_name[sub_ind]);
+                        // =========================================================================================================================
+                     }
+                     else {
+                        printf("Communication flag is not properly set in the model file. It should be 0 or 1, not %d !!!!!\n", NS3_flag);
+                        exit(EXIT_FAILURE);
+                     }
                      imagLMP[sub_ind] = (double) mwBusOut.Get(2, modified_bus_ind[sub_ind], 15)/1000; // local marginal price based on the Lagrange multiplier on reactive power mismatch (column 14 of the output bus matrix
                      cout << "================== SENDING OUT THE LMP TO " << sub_name[sub_ind];
                      cout << " AT BUS " << mpc.Get("bus", 1, 1).Get(2, modified_bus_ind[sub_ind], 1) << " =====================" << endl;

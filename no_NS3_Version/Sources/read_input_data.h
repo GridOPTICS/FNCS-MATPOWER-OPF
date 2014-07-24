@@ -12,4 +12,4 @@ void read_model_data(char *file_name, int nbrows, int nbcolumns, int ngrows, int
               double *baseMVA, double *bus, double *gen,
               double *branch, double *area, double *costs, int *SubBusFNCS,
               char SubNameFNCS[][15], char MarketNameFNCS[][11],
-              int *offline_gen_bus, double *ampFactor);
+              int *offline_gen_bus, double *ampFactor, int *NS3_flag);

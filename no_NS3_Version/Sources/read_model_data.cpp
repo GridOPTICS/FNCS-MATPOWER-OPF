@@ -28,7 +28,7 @@ void read_model_data(char *file_name, int nbrows, int nbcolumns, int ngrows, int
               double *baseMVA, double *bus, double *gen,
               double *branch, double *area, double *costs, int *SubBusFNCS,
               char SubNameFNCS[][15], char MarketNameFNCS[][11],
-              int *offline_gen_bus, double *ampFactor)
+              int *offline_gen_bus, double *ampFactor, int *NS3_flag)
 {
 // Open the file with the name given by the file name
 ifstream data_file(file_name, ios::in);
@@ -46,6 +46,11 @@ if (data_file.is_open()) {
          if (strncmp(&curr_line[0], "mpc.baseMVA =", 13) == 0) {
             cout << "Reading BASE MVA ......................." << endl;
             sscanf(&curr_line[0], "%*s = %lf %*s", baseMVA);
+         }
+         // ================== READING THE FLAG RELATED TO THE USE OF COMMUNICATION SIMULATOR ============
+         if (strncmp(&curr_line[0], "mpc.NS3_flag =", 14) == 0) {
+            cout << "Reading NS3 flag ........................" << endl;
+            sscanf(&curr_line[0], "%*s = %d %*s", NS3_flag);
          }
          // ================== READING NOMINAL FREQUENCY =========================================
 //         if (strncmp(&curr_line[0], "sys_freq", 8) == 0) {
