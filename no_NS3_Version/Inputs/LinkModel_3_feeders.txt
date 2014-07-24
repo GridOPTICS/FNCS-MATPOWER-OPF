@@ -1,3 +1,0 @@
-150 MarkNIF1 F1_single_ramp_NIF_ 67
-240 MarkNIF2 F2_single_ramp_NIF_ 84
-210 MarkNIF3 F3_single_ramp_NIF_ 33
