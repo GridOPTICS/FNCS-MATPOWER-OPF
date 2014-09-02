@@ -46,10 +46,14 @@ mpc.MarketNameFNCS = [
 %% For creating scenarios for visualization
 %% Setting up the matrix of generators that could become off-line
 % Number of generators that might be turned off-line
-mpc.offlineGenNum = 1;
+mpc.offlineGenNum = 5;
 % Matrix contains the bus number of the corresponding off-line generators
 mpc.offlineGenBus = [
-                  1 ];       
+                  10;
+                  25;
+                  65;
+                  66;
+                  69; ];       
 
 %% ======================================================================
 %% An amplification factor is used to simulate a higher load at the feeder end

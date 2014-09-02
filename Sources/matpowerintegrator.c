@@ -56,18 +56,22 @@ void startcalculation()
 bool synchronize(bool inf)
 {
 
- TIME nextTime;
-
+  TIME nextTime, deltaTime;
 // if(inf)
 //	nextTime=getNextTime(currentTime,Infinity);
 // else
- 	nextTime=getNextTime(currentTime,currentTime+1);
-
+  if (currentTime % 300 >= 0 && currentTime % 300 < 295)
+  {
+     deltaTime = 295 - currentTime % 300;
+  }
+  else
+  {
+     deltaTime = 295 - currentTime % 300 + 300;
+  }
+  nextTime=getNextTime(currentTime,currentTime+deltaTime);
+  currentTime=nextTime;
  
- currentTime=nextTime;
- 
- 
- return !isFinished();
+  return !isFinished();
 }
 
 void sendvolt(int *busnumber,char *toSubstation,double* real, double* img)

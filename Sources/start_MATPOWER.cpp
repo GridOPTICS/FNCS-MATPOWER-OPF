@@ -43,9 +43,9 @@ using namespace std;
 #include "librunpf.h"
 #include "librunopf.h"
 #include "libmpoption.h"
-#include "/usr/local/MATLAB/MATLAB_Compiler_Runtime/v81/extern/include/mclmcrrt.h"
-#include "/usr/local/MATLAB/MATLAB_Compiler_Runtime/v81/extern/include/mclcppclass.h"
-#include "/usr/local/MATLAB/MATLAB_Compiler_Runtime/v81/extern/include/matrix.h"
+#include "mclmcrrt.h"
+#include "mclcppclass.h"
+#include "matrix.h"
 
 # define PI 3.14159265
 
@@ -176,7 +176,7 @@ int run_main(int argc, char **argv) {
          // market names
          char market_name[nFNCSelem][11];
          // static active and reactive power at the buses that are connected to substations
-         double static_pd[nFNCSelem], static_qd[nFNCSelem];
+         double fixed_pd[nFNCSelem], fixed_qd[nFNCSelem];
          // calculated real and imaginary voltage at the buses that are connected to substations
          double sendValReal[nFNCSelem], sendValIm[nFNCSelem];
          // calculated LMP values at the buses that are connected to substations
@@ -206,21 +206,6 @@ int run_main(int argc, char **argv) {
             realLMP[i] = 0;
             imagLMP[i] = 0;
          }
-         // output files for saving results
-         char subst_output_file_name[nFNCSelem][18]; // one file for each substation
-         char gen_output_file_name[ngrows][17]; // one file for each generator; there are ngrows generators in this case; needs to be changed for general purpose, maybe using ngrows
-         ofstream subst_output_file, gen_output_file;
-         for (int i = 0; i < sizeof(subst_output_file_name)/sizeof(subst_output_file_name[0]); i++) {
-            snprintf(subst_output_file_name[i], sizeof(subst_output_file_name[i]), "Substation_%d.csv", i+1);
-            ofstream subst_output_file(subst_output_file_name[i], ios::out);
-            subst_output_file << "Time (seconds), Real Power Demand - PD (MW), Reactive Power Demand (MVAr), Substation V real (V), Substation V imag (V), LMP ($/kWh), LMP ($/kVArh)" << endl;
-         }
-         // Turning off the Generator file creation for a while. Uncomment the lines below to have them created again.
-         // for (int i = 0; i < sizeof(gen_output_file_name)/sizeof(gen_output_file_name[0]); i++) {
-         //    snprintf(gen_output_file_name[i], sizeof(gen_output_file_name[i]), "Generator_%d.csv", i+1);
-         //    ofstream gen_output_file(gen_output_file_name[i], ios::out);
-         //    gen_output_file << "Time (seconds), STATUS, PMAX (MW), PMIN (MW), Real power output - PG (MW), QMAX (MVAr), QMIN (MVAr), Reactive power output - QG (MVAr)" << endl;
-         // }
 
 // ========================================================================================================================
          // Creating the MPC structure that is going to be used as input for OPF function
@@ -260,6 +245,22 @@ int run_main(int argc, char **argv) {
          read_model_data(file_name, nbrows, nbcolumns, ngrows, ngcolumns, nbrrows, nbrcolumns, narows, nacolumns,
                   ncrows, nccolumns, nFNCSelem, noffgelem, &baseMVA, bus, gen,
                   branch, area, costs, bus_num, sub_name, market_name, offline_gen_bus, &amp_fact, &NS3_flag);
+          // output files for saving results
+         char subst_output_file_name[nFNCSelem][18]; // one file for each substation
+         char gen_output_file_name[noffgelem][17]; // one file for each generator that is turned off; for larger models we were getting too many files
+         ofstream subst_output_file, gen_output_file;
+         for (int i = 0; i < sizeof(subst_output_file_name)/sizeof(subst_output_file_name[0]); i++) {
+            snprintf(subst_output_file_name[i], sizeof(subst_output_file_name[i]), "Substation_%d.csv", bus_num[i]); // Substation_BUS#.csv
+            ofstream subst_output_file(subst_output_file_name[i], ios::out);
+            subst_output_file << "Time (seconds), Real Power Demand - PD (MW), Reactive Power Demand (MVAr), Substation V real (V), Substation V imag (V), LMP ($/kWh), LMP ($/kVArh)" << endl;
+         }
+         // Turning off the Generator file creation for a while. Uncomment the lines below to have them created again.
+         for (int i = 0; i < sizeof(gen_output_file_name)/sizeof(gen_output_file_name[0]); i++) {
+            snprintf(gen_output_file_name[i], sizeof(gen_output_file_name[i]), "Generator_%d.csv", offline_gen_bus[i]); // Generator_BUS#.csv
+            ofstream gen_output_file(gen_output_file_name[i], ios::out);
+            gen_output_file << "Time (seconds), STATUS, PMAX (MW), PMIN (MW), Real power output - PG (MW), QMAX (MVAr), QMIN (MVAr), Reactive power output - QG (MVAr)" << endl;
+         }
+
          mwBusT.SetData(bus, nbelem);
          // Transposing mwBusT to get the correct bus matrix
          // Careful: it is 1-base indexing because we are working with MATLAB type array mwArray
@@ -357,18 +358,18 @@ int run_main(int argc, char **argv) {
                // In mpc.Get("bus", 1, 1).Get(2, ind, 1), the 2 in the second Get represents the number of indeces the array has
                if ((int) mpc.Get("bus", 1, 1).Get(2, ind, 1) == bus_num[sub_ind]) {
                   modified_bus_ind[sub_ind] = ind;
-                  static_pd[sub_ind] = mpc.Get("bus", 1, 1).Get(2, ind, 3);
-                  static_qd[sub_ind] = mpc.Get("bus", 1, 1).Get(2, ind, 4);
+                  fixed_pd[sub_ind] = mpc.Get("bus", 1, 1).Get(2, ind, 3);
+                  fixed_qd[sub_ind] = mpc.Get("bus", 1, 1).Get(2, ind, 4);
                   cout << sub_name[sub_ind] << " IS AT BUS NUMBER " << bus_num[sub_ind] << ", ";
                   cout << "WHICH IS AT LOCATION " << modified_bus_ind[sub_ind] << " IN THE MATPOWER BUS MATRIX." << endl;
-                  cout << "Initially, the static ACTIVE power at bus " << bus_num[sub_ind] << " is " << static_pd[sub_ind] << "." << endl;
-                  cout << "Initially, the static REACTIVE power at bus " << bus_num[sub_ind] << " is " << static_qd[sub_ind] << "." << endl;
+                  cout << "Initially, the static ACTIVE power at bus " << bus_num[sub_ind] << " is " << fixed_pd[sub_ind] << "." << endl;
+                  cout << "Initially, the static REACTIVE power at bus " << bus_num[sub_ind] << " is " << fixed_qd[sub_ind] << "." << endl;
                }
             }
          }
 
          // Find the index in the MATPOWER generator matrix corresponding to the buses that could be turned off
-         // The bus number and the actual index in the MATPOWER matrix may not coincideprint(fig_handle, '-dpdf', '-r600', ['comparative_freq_res.pdf'])
+         // The bus number and the actual index in the MATPOWER matrix may not coincide
          for (int off_ind = 0; off_ind < sizeof(offline_gen_bus)/sizeof(offline_gen_bus[0]); off_ind++){
             for (int gen_ind = 1; gen_ind <= ngrows; gen_ind++){ // in MATLAB indexes start from 1
                if((int) mpc.Get("gen", 1, 1).Get(2, gen_ind, 1) == offline_gen_bus[off_ind]){
@@ -403,7 +404,8 @@ int run_main(int argc, char **argv) {
             // Setting the load at the load buses based on the load profiles
             // In this case, the model has 6 load buses, out of which only 3 had non-zero values originally; so we stick to only those 
             // getting in a one-day long profile. WARNING: if the model is changed these need to be readjusted
-            if (curr_time % 300 == 0) {
+            
+            // if (curr_time % 300 == 0) { // DON NOT HAVE TO CHECK THIS, NOW THAT I'VE CHANGED THE SYNC FUNCTION
                /*
                cout << "\033[2J\033[1;1H"; // Just a trick to clear the screen before pritning the new results at the terminal
                cout << "================== It has been " << curr_hours << " hours, " << curr_minutes << " minutes, and ";
@@ -411,13 +413,13 @@ int run_main(int argc, char **argv) {
                cout << "index -->> " << 12 * (curr_hours % 24) + curr_minutes / 5 << endl;
                */
                for (int sub_ind = 0; sub_ind < sizeof(bus_num)/sizeof(bus_num[0]); sub_ind++) {
-                  mpc.Get("bus", 1, 1).Get(2, modified_bus_ind[sub_ind], 3).Set((mwArray) real_power_demand[sub_ind][12 * (curr_hours % 24) + curr_minutes / 5]);
-                  static_pd[sub_ind] = real_power_demand[sub_ind][12 * (curr_hours % 24) + curr_minutes / 5];
-                  // cout << "@ feeder " << sub_ind+1 << " -->> " << static_pd[sub_ind] << endl;
+                  // mpc.Get("bus", 1, 1).Get(2, modified_bus_ind[sub_ind], 3).Set((mwArray) real_power_demand[sub_ind][12 * (curr_hours % 24) + curr_minutes / 5]);
+                  fixed_pd[sub_ind] = real_power_demand[sub_ind][12 * (curr_hours % 24) + curr_minutes / 5];
+                  // cout << "@ feeder " << sub_ind+1 << " -->> " << fixed_pd[sub_ind] << endl;
                   // mpc.Get("bus", 1, 1).Get(2, modified_bus_ind[sub_ind], 4).Set((mwArray) reactive_power_demand[curr_hours % 24 + curr_minutes / 5][sub_ind]);
-                  // static_qd[sub_ind] = reactive_power_demand[curr_hours % 24 + curr_minutes / 5][sub_ind];
+                  // fixed_qd[sub_ind] = reactive_power_demand[curr_hours % 24 + curr_minutes / 5][sub_ind];
                }
-            }
+            // }
             // Setting up the status of the generators, based on the current time
             // Turning some generators out-of-service between certain time preiods in the simulation 
             // every day between 6 and 7 or 18 and 19 !!! WARNING !!! These hours are hard coded assuming we run more than 24 hours
@@ -469,8 +471,8 @@ int run_main(int argc, char **argv) {
                   // It is assumed that the load at the bus consists of the initial constant load plus a controllable load coming from distribution (GridLAB-D)
                   // To simulate the idea of having a more substantial change in load at the substantion level, consider we have amp_fact similar models at on node
                   // That is why I multiply by amp_fact below.
-                  mpc.Get("bus", 1, 1).Get(2, modified_bus_ind[sub_ind], 3).Set((mwArray) (static_pd[sub_ind] + amp_fact*bus_valueReal[sub_ind]));
-                  mpc.Get("bus", 1, 1).Get(2, modified_bus_ind[sub_ind], 4).Set((mwArray) (static_qd[sub_ind] + amp_fact*bus_valueIm[sub_ind]));
+                  mpc.Get("bus", 1, 1).Get(2, modified_bus_ind[sub_ind], 3).Set((mwArray) (fixed_pd[sub_ind] + amp_fact*bus_valueReal[sub_ind]));
+                  mpc.Get("bus", 1, 1).Get(2, modified_bus_ind[sub_ind], 4).Set((mwArray) (fixed_qd[sub_ind] + amp_fact*bus_valueIm[sub_ind]));
                } // end IF(mesgc)
             } // end FOR(sub_ind)
 
@@ -587,9 +589,9 @@ int run_main(int argc, char **argv) {
                   subst_output_file << curr_time << "," << (double) mwBusOut.Get(2, modified_bus_ind[sub_ind], 3) << "," << (double) mwBusOut.Get(2, modified_bus_ind[sub_ind], 4) << ", " << sendValReal[sub_ind] << ", " << sendValIm[sub_ind] <<  ", " << realLMP[sub_ind] << ", " << imagLMP[sub_ind] << endl;               
                }
 
-               for (int gen_ind = 0; gen_ind < ngrows; gen_ind++){ // in C indexes start from 0, but from MATLAB variables index needs to start from 1
+               for (int gen_ind = 0; gen_ind < sizeof(offline_gen_ind)/sizeof(offline_gen_ind[0]); gen_ind++){ // in C indexes start from 0, but from MATLAB variables index needs to start from 1; these refer only to the generators that might get offline
                   ofstream gen_output_file(gen_output_file_name[gen_ind], ios::app);
-                  gen_output_file << curr_time << "," << (int) mwGenOut.Get(2, gen_ind + 1, 8) << "," << (double) mwGenOut.Get(2, gen_ind + 1, 9) << "," << (double) mwGenOut.Get(2, gen_ind + 1, 10) << "," << (double) mwGenOut.Get(2, gen_ind + 1, 2) << "," << (double) mwGenOut.Get(2, gen_ind + 1, 4) << "," << (double) mwGenOut.Get(2, gen_ind + 1, 5) << "," << (double) mwGenOut.Get(2, gen_ind + 1, 3) << endl;
+                  gen_output_file << curr_time << "," << (int) mwGenOut.Get(2, offline_gen_ind[gen_ind], 8) << "," << (double) mwGenOut.Get(2, offline_gen_ind[gen_ind], 9) << "," << (double) mwGenOut.Get(2, offline_gen_ind[gen_ind], 10) << "," << (double) mwGenOut.Get(2, offline_gen_ind[gen_ind], 2) << "," << (double) mwGenOut.Get(2, offline_gen_ind[gen_ind], 4) << "," << (double) mwGenOut.Get(2, offline_gen_ind[gen_ind], 5) << "," << (double) mwGenOut.Get(2, offline_gen_ind[gen_ind], 3) << endl;
                }
 
             }
@@ -603,7 +605,7 @@ int run_main(int argc, char **argv) {
 
          cout << "Just executed the MATLAB function from the shared library." << endl;
          subst_output_file.close();
-         // gen_output_file.close();
+         gen_output_file.close();
 
          // mxDestroyArray(data_file);
          //mxFree(file_name);
@@ -643,12 +645,12 @@ int run_main(int argc, char **argv) {
 /* ==================================================================================================================
 ====================== MAIN PART ====================================================================================
 ===================================================================================================================*/
-int main(int argc, char* argv[]) {	
+int main(int argc, char **argv) {	
    mclmcrInitialize();
    // return mclRunMain((mclMainFcnType) run_main, 0, NULL);
    cout << argc << endl;
-   cout << argv[0] << endl;
-   cout << argv[1] << endl;
-   cout << argv[2] << endl;
+   if (argc > 0) cout << argv[0] << endl;
+   if (argc > 1) cout << argv[1] << endl;
+   if (argc > 2) cout << argv[2] << endl;
    return mclRunMain((mclMainFcnType) run_main(argc, argv), 0, NULL);
 }
