@@ -1,6 +1,6 @@
-INSTALL_PATH = /home/vizproject/simbins/bin
-MCR_PATH = /usr/local/MATLAB/MATLAB_Compiler_Runtime/v81
-CXX = g++-4.4
+INSTALL_PATH = $(FNCS_INSTALL)/bin
+MCR_PATH = $(FNCS_INSTALL)/MATLAB/MATLAB_Compiler_Runtime/v81
+CXX = g++
 
 CXXFLAGS =
 CXXFLAGS += -g
@@ -11,6 +11,7 @@ CXXFLAGS += -O0
 CPPFLAGS =
 CPPFLAGS += -I$(MCR_PATH)/extern/include/cpp
 CPPFLAGS += -I$(MCR_PATH)/extern/include
+CPPFLAGS += -I$(FNCS_INSTALL)/include
 CPPFLAGS += -D_GNU_SOURCE
 CPPFLAGS += -DUNIX
 CPPFLAGS += -DX11
@@ -21,6 +22,7 @@ CPPFLAGS += -DNDEBUG
 LDFLAGS =
 LDFLAGS += -Wl,-rpath-link,$(MCR_PATH)/bin/glnxa64
 LDFLAGS += -L$(MCR_PATH)/runtime/glnxa64
+LDFLAGS += -L$(FNCS_INSTALL)/lib
 LDFLAGS += -L.
 
 LIBS =
